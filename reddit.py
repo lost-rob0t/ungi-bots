@@ -2,8 +2,8 @@
 
 from os import environ
 import asyncpraw
-from utils.Config import config
-from utils.Elastic_Wrapper import insert_doc
+from ungi_cli.utils.Config import config
+from ungi_cli.utils.Elastic_Wrapper import insert_doc
 import sqlite3
 import asyncio
 import hashlib

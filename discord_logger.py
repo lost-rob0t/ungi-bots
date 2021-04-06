@@ -6,8 +6,8 @@ import requests
 import datetime
 import asyncio
 import json
-from utils.Elastic_Wrapper import insert_doc
-from utils.Config import config
+from ungi_cli.utils.Elastic_Wrapper import insert_doc
+from ungi_cli.utils.Config import config
 import hashlib
 from os import environ
 parser = argparse.ArgumentParser()
