@@ -9,7 +9,7 @@ class ungi(cmd2.Cmd):
     def __init__(self):
         super().__init__()
         self.color = True
-        self.plugins = "./ungi-cli/"
+        self.plugins = "./ungi_cli/"
         self.path = ""
         self.banner = 'banner.txt'
         self.prompt = 'ungi> '

@@ -94,3 +94,69 @@ def list_subreddits(path):
         conn.close()
     except sqlite3.DataError as e:
         print(e)
+
+def add_discord(path, server_id, operation_id):
+    """
+    We Add a discord Server to the monitor list
+    """
+    try:
+        conn = sqlite3.connect(path)
+        cur = conn.cursor()
+        cur.execute("INSERT INTO discord(server_id, operation_id) values(?,?);", (server_id, operation_id))
+        conn.commit()
+        conn.close()
+    except sqlite3.IntegrityError as duplicate_record:
+        print(e)
+
+def list_servers(path):
+    """
+    Listing Servers.
+    """
+    try:
+        conn = sqlite3.connect(path)
+        cur = conn.cursor()
+        servers =  cur.execute("SELECT * from discord;")
+        return servers.fetchall()
+    except sqlite3.DataError as e:
+        print(e)
+
+def get_op_name(path, id):
+    """
+    return operation name matching id
+    """
+    try:
+        conn = sqlite3.connect(path)
+        cur = conn.cursor()
+        name = cur.execute("SELECT operation_name FROM operations WHERE operation_id = ?;", (id,))
+        return name.fetchone()
+    except sqlite3.DataError as e:
+        print(e)
+
+def add_watch_word(path, word, operation_id):
+    """
+    Function used to add a word to the watchlist
+    inputs:
+    word (string)
+    operation_id (int)
+    """
+    try:
+        conn = sqlite3.connect(path)
+        cur = conn.cursor()
+        cur.execute("INSERT INTO watch_list(word, operation_id) VALUES(?,?)", (word, operation_id))
+        conn.commit()
+    except sqlite3.IntegrityError as e:
+        print("word is already in database.")
+
+def delete_operation(path, operation_id):
+    """
+    used to remove a operation from the database
+    inputs:
+    path (string)
+    operation_id (int)
+    """
+    try:
+        conn = sqlite3.connect(path)
+        cur = conn.cursor()
+        cur.execute("DELETE ON operations WHERE operation_id = ?", (operation_id,))
+    except sqlite3.DatabaseError as e:
+        print(e)
