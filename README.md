@@ -37,7 +37,7 @@ A linux host
 
 ` cd ungi-bots && pip install --user -r requirements.txt`
 
-this will configure the backend, make the required indexes, ect.
+this will configure the backend, make the required indexes, etc.
 
 ### Discord Logger setup
 To get the Discord loggers you will need tokens, you can obtain
@@ -62,7 +62,7 @@ Once you have the tokens:
 
 To setup the reddit scraper you will need a api token from Reddit. 
 
-you can search the web for how to obtain them.
+You can search the web for how to obtain them.
 
 Place the Credientails in the config file
 
@@ -74,7 +74,7 @@ for full scrape of the subbreddits
 
 `python reddit.py -f`
 
-**NOTE**: if you want it to have it perodicly watch a subreddit you will have to make a cron tab
+**NOTE**: if you want it to have it perodically watch a subreddit you will have to make a cron tab
 
 Heres some help on that:
 
