@@ -6,26 +6,7 @@ Bots, scrapers and whatever to collect data goes here.
 A working Elastic search install
 
 A linux host
-
-
-###  Server Setup
-
-1. Make sure to grab a copy of UNGI server
-
-`git clone https://gitea.gretagangbang.biz:nsaspy/UNGI.git`
-
-2. Install the requirements.txt file
-
-`pip3 install --user -r requirements.txt`
-
-3. for security reasons in main.py chnage:
-
-`debug=True` to `debug=False`
-
-4. Configure the backend:
-
-`python3 main.py -i`
-
+ 
 
 ### Bots/CLI setup
 
@@ -37,7 +18,13 @@ A linux host
 
 ` cd ungi-bots && pip install --user -r requirements.txt`
 
+3. run ungi.py and type "init"
+
 this will configure the backend, make the required indexes, etc.
+
+
+
+
 
 ### Discord Logger setup
 To get the Discord loggers you will need tokens, you can obtain
