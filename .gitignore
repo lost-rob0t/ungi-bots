@@ -1,0 +1,8 @@
+*.ini
+*.org
+*.txt
+*.pyc
+*.test*
+*.db
+*.csv
+*.json

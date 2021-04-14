@@ -42,7 +42,7 @@ async def log_message(url, data):
     hash_id = hash_(str(data['m']) +
                        str(data['date']) +
                        str(data['sid']) +
-                       str(data['uid']), encoding='utf8')
+                       str(data['uid']))
     await insert_doc(args.connection, index, data, hash_id)
 
 
