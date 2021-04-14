@@ -2,6 +2,9 @@
 
 import sqlite3
 
+def dict_from_row(row):
+    return dict(zip(row.keys(), row))
+
 def db_init(path, sql_file):
     """
     used for setup (main.py -i)
@@ -157,6 +160,7 @@ def delete_operation(path, operation_id):
     try:
         conn = sqlite3.connect(path)
         cur = conn.cursor()
-        cur.execute("DELETE ON operations WHERE operation_id = ?", (operation_id,))
-    except sqlite3.DatabaseError as e:
+        cur.execute("DELETE FROM operations WHERE operation_id = ?", (operation_id,))
+        conn.commit()
+    except Exception as e:
         print(e)
