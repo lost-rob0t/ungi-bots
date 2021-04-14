@@ -7,8 +7,7 @@ import asyncio
 import json
 from ungi_cli.utils.Elastic_Wrapper import insert_doc
 from ungi_cli.utils.Config import config
-from ungi_cli.utils.Sqlite3_Utils import list_servers  # For setting operation
-import hashlib
+from ungi_cli.utils.Sqlite3_Utils import list_servers, hash_  # For setting operation
 from os import environ
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--token", help="Logs in with this token")
@@ -40,11 +39,10 @@ for server in list_servers(database):
 
 
 async def log_message(url, data):
-    hash_input = bytes(str(data['m']) +
+    hash_id = hash_(str(data['m']) +
                        str(data['date']) +
                        str(data['sid']) +
                        str(data['uid']), encoding='utf8')
-    hash_id = hashlib.md5(hash_input).hexdigest()
     await insert_doc(args.connection, index, data, hash_id)
 
 

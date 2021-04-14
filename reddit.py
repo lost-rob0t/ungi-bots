@@ -4,9 +4,9 @@ from os import environ
 import asyncpraw
 from ungi_cli.utils.Config import config
 from ungi_cli.utils.Elastic_Wrapper import insert_doc
+from ungi_cli.utils.Sqlite3_Utils import hash_
 import sqlite3
 import asyncio
-import hashlib
 import datetime
 import argparse
 from random import shuffle  # used for randomizing the subreddit list
@@ -39,15 +39,14 @@ def list_subreddits(path):
 
 async def insert_es(data, data_type=None):
     if data_type == "comment":
-        hash_input = bytes(str(data["body"]) +
+        hash_id = hash_(str(data["body"]) +
                            str(data["date"]) +
-                           str(data["author"]), encoding="utf8")
+                           str(data["author"]))
     if data_type == "post":
-        hash_input = bytes(str(["post-title"]) +
+        hash_id = hash_(str(["post-title"]) +
                            str(data["date"]) +
                            str(data["op"]) +
-                           str(data["subreddit"]), encoding="utf8")
-    hash_id = hashlib.md5(hash_input).hexdigest()
+                           str(data["subreddit"]))
     await insert_doc(es_host, es_index, data, hash_id)
 
 
