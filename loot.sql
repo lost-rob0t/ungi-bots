@@ -22,8 +22,8 @@ CREATE TABLE "users" (
 	"user_id"	INTEGER NOT NULL,
 	"username"	TEXT NOT NULL,
 	"website"	TEXT NOT NULL,
-	"source"	TEXT,
-	"hash_id"	TEXT,
+	"source"	TEXT NOT NULL,
+	"hash_id"	TEXT NOT NULL UNIQUE,
 	"operation_id"	INTEGER NOT NULL,
 	FOREIGN KEY("operation_id") REFERENCES "operations"("operation_id") ON DELETE CASCADE,
 	PRIMARY KEY("user_id")
@@ -40,10 +40,11 @@ CREATE TABLE "messages" (
 	"message"	TEXT NOT NULL,
 	"date"	TEXT NOT NULL,
 	"watch_id"	INTEGER,
-	"hash_id"	TEXT UNIQUE
-	FOREIGN KEY("watch_id") REFERENCES "watch_list"("watch_id") ON DELETE CASCADE,
+	"hash_id"	TEXT UNIQUE,
+	"source"	INTEGER,
+	FOREIGN KEY("source") REFERENCES "users"("user_id") ON DELETE CASCADE,
 	PRIMARY KEY("message_id"),
-	FOREIGN KEY("operation_id") REFERENCES "operations"("operation_id") ON DELETE CASCADE
+	FOREIGN KEY("watch_id") REFERENCES "watch_list"("watch_id") ON DELETE CASCADE
 );
 CREATE TABLE "loot" (
 	"loot_id"	INTEGER NOT NULL,

@@ -169,10 +169,7 @@ class OperationsManager(cmd2.Cmd):
                               header_horiz_align=HorizontalAlignment.CENTER, data_horiz_align=HorizontalAlignment.CENTER))
         reddit_list: List[List[Any]] = list()
         subreddits = []
-        if args.name:
-            op_id = get_op_id(self.database_path, args.name)[0]
-        else:
-            op_id = int(args.id)
+        op_id = int(args.id)
         sub_id = 1
         with open(args.input, "r") as reddit_file:
             for line in reddit_file:
@@ -186,15 +183,14 @@ class OperationsManager(cmd2.Cmd):
         choice = input("Is this ok? (y/n) ")
         if choice == "y":
             for sub in subreddits:
-                add_subreddit(self.database_path, sub, int(op_id[0]))
+                add_subreddit(self.database_path, sub, op_id)
         else:
             print("Canceled")
 
     # Setting up argparser
     discord_bulk = argparse.ArgumentParser()
     discord_bulk.add_argument("-i", "--input", help="file containing discord id's")
-    discord_bulk.add_argument("-id", help="operation id")
-    discord_bulk.add_argument("-n", "--name", help="operation_name")
+    discord_bulk.add_argument("-Id", help="operation id")
 
     @cmd2.with_argparser(discord_bulk)
     def do_discord_bulk(self, args):
@@ -204,10 +200,7 @@ class OperationsManager(cmd2.Cmd):
                               header_horiz_align=HorizontalAlignment.CENTER, data_horiz_align=HorizontalAlignment.CENTER))
         reddit_list: List[List[Any]] = list()
         subreddits = []
-        if args.name:
-            op_id = get_op_id(self.database_path, args.name)[0]
-        else:
-            op_id = int(args.id)
+        op_id = args.Id
         sub_id = 1
         with open(args.input, "r") as reddit_file:
             for line in reddit_file:
@@ -221,7 +214,7 @@ class OperationsManager(cmd2.Cmd):
         choice = input("Is this ok? (y/n) ")
         if choice == "y":
             for sub in subreddits:
-                add_discord(self.database_path, sub, int(op_id[0]))
+                add_discord(self.database_path, sub, op_id)
         else:
             print("Canceled")
 

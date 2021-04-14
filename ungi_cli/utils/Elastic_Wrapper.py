@@ -31,9 +31,9 @@ async def insert_doc(host, index, doc, id=None):
         except Exception as e:
             print(e)
 
-async def search(host, query, index=None):
+async def search(host, query, size=0, index=None):
     if index:
-        path = host + f"/{index}/_search"
+        path = host + f"/{index}/_search?size={size}"
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(path, json=query) as r:
@@ -42,7 +42,7 @@ async def search(host, query, index=None):
         except ConnectionError as e:
             print(e)
     else:
-        path = host + "/_search"
+        path = host + f"/_search?size={size}"
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(path, json=query) as r:
