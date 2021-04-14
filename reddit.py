@@ -12,6 +12,7 @@ import argparse
 from random import shuffle  # used for randomizing the subreddit list
 # config setup
 
+
 conf_file = environ['UNGI_CONFIG']
 db_path = config("DB", "path", conf_file)
 es_host = config("ES", "host", conf_file)
@@ -108,9 +109,41 @@ def main():
     parser.add_argument(
         "-f",
         "--full",
-        help="Grabe every public submission available",
+        help="Grab every public submission available",
         action="store_true")
+    parser.add_argument(
+        "-c",
+        "--config",
+        help="Path to config"
+    )
     args = parser.parse_args()
+
+
+    # try and loadn environ.
+    # If it fails loads --config flag
+
+    try:
+        conf_file = environ['UNGI_CONFIG']
+        db_path = config("DB", "path", conf_file)
+        es_host = config("ES", "host", conf_file)
+        es_index = config("INDEX", "reddit", conf_file)
+    except KeyError as no_env:
+        conf_file = args.config
+        db_path = config("DB", "path", conf_file)
+        es_host = config("ES", "host", conf_file)
+        es_index = config("INDEX", "reddit", conf_file)
+
+    # Setting up the reddit instance
+
+    reddit = asyncpraw.Reddit(
+        client_id=config("REDDIT", "client_id", conf_file),
+        client_secret=config("REDDIT", "client_secret", conf_file),
+        username=config("REDDIT", "username", conf_file),
+        password=config("REDDIT", "password", conf_file),
+        user_agent=config("REDDIT", "user_agent", conf_file)
+    )
+
+
     if args.full:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(scrape(reddit, None))
