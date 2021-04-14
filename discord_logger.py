@@ -2,12 +2,12 @@
 
 import argparse
 import discord
-import requests
 import datetime
 import asyncio
 import json
 from ungi_cli.utils.Elastic_Wrapper import insert_doc
 from ungi_cli.utils.Config import config
+from ungi_cli.utils.Sqlite3_Utils import list_servers # For setting operation
 import hashlib
 from os import environ
 parser = argparse.ArgumentParser()
@@ -18,14 +18,54 @@ parser.add_argument("-c", "--connection", help="host", default="http://127.0.0.1
 args = parser.parse_args()
 
 oni = discord.Client()
-conf_file = environ['UNGI_CONFIG']
-index = config("INDEX", "discord", conf_file)
+
+# config stuff
+conf_file = environ['UNGI_CONFIG'] # pulling config from environment
+database = config("DB", "path", conf_file) #database path
+index = config("INDEX", "discord", conf_file) # index setting where messages are stored
 print(conf_file)
+
+# We are retreiving the list of servers in the watch list
+watch_list = []
+for server in list_servers(database):
+    server_watch = {}
+    server_watch["id"] = server[1]
+    server_watch["operation"] = server[2]
+    watch_list.append(server_watch)
+
+
 async def log_message(url, data):
-    hash_input = bytes(str(data['m']) + str(data['date-nanos']) + str(data['sid']) + str(data['uid']), encoding='utf8')
+    hash_input = bytes(str(data['m']) + str(data['date']) + str(data['sid']) + str(data['uid']), encoding='utf8')
     hash_id = hashlib.md5(hash_input).hexdigest()
     await insert_doc(args.connection, index, data, hash_id)
 
+
+def doc_build(message):
+    """
+    Function used to build docs
+    takes a discord message object as input
+    """
+    md = {}
+    md['date'] = str(message.created_at.isoformat())
+    md['uid'] = str(message.author.id)
+    md['ut'] = str(message.author)
+    md['sn'] = str(message.guild)
+    md['sid'] = str(message.guild.id)
+    md['cn'] = str(message.channel)
+    md['cid'] = str(message.channel.id)
+    md['m'] = str(message.content)
+    md['nick'] = str(message.author.display_name)
+    md['bot'] = str(message.author.bot)
+
+    try:
+        for id in watch_list:
+            if id.get("id") == message.guild.id:
+                md["operation-id"] = id["operation"]
+    except KeyError as invalide_item:
+        print(invalide_item)
+    return md
+
+# Ran at startup
 @oni.event
 async def on_ready():
     servers = 0
@@ -40,63 +80,33 @@ async def on_ready():
             try:
                 for message in await channel.history(limit=int(args.max)).flatten():
                     channels += 1
-                    bot_test = message.author.bot
-                    nickname = message.author.display_name
-                    if bot_test is False:
-                        md = {}
-                        md['date-nanos'] = str(message.created_at.isoformat())
-                        md['uid'] = str(message.author.id)
-                        md['ut'] = str(message.author)
-                        md['sn'] = str(message.guild)
-                        md['sid'] = str(message.guild.id)
-                        md['cn'] = str(message.channel)
-                        md['cid'] = str(message.channel.id)
-                        md['m'] = str(message.content)
-                        await log_message(args.connection, md)
+                    md = doc_build(message)
+                    await log_message(args.connection, md)
             except discord.errors.Forbidden as e:
                 pass
             except AttributeError as e:
                 pass
 @oni.event
 async def on_message(message):
-    md = {}
-    md['date-nanos'] = str(message.created_at.isoformat())
-    md['uid'] = int(message.author.id)
-    md['ut'] = str(message.author)
-    md['sn'] = str(message.guild)
-    md['sid'] = int(message.guild.id)
-    md['cn'] = str(message.channel)
-    md['cid'] = int(message.channel.id)
-    md['m'] = str(message.content)
+    md = doc_build(message)
     await log_message(args.connection, md)
+
+
+# ran when bot joins server
 @oni.event
 async def on_guild_join(guild):
     print(f'joined: {guild}')
     for channel in guild.channels:
         try:
             for message in await channel.history(limit=int(args.max)).flatten():
-                bot_test = message.author.bot
-                nickname = message.author.display_name
-                if bot_test is False:
-                    md = {}
-                    md['date'] = str(message.created_at.isoformat())
-                    md['uid'] = int(message.author.id)
-                    md['ut'] = str(message.author)
-                    md['sn'] = str(message.guild)
-                    md['sid'] = int(message.guild.id)
-                    md['cn'] = str(message.channel)
-                    md['cid'] = int(message.channel.id)
-                    md['m'] = str(message.content)
-                    await log_message(args.connection, md)
+                md = doc_build(message)
+                await log_message(args.connection, md)
         except discord.errors.Forbidden as e:
             pass
         except AttributeError as e:
             pass
-@oni.event
-async def on_guild_remove(guild):
-    print(f'Left: {guild}')
-    resp = await update(args.connection, 1)
-try:
-    oni.run(args.token, bot=False)
-except KeyboardInterrupt as stop:
-    print("Stopping!")
+
+# We start the bot.
+# bot=False means it is started as a self bot
+
+oni.run(args.token, bot=False)
