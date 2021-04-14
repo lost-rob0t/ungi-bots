@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
 import sqlite3
-
-def dict_from_row(row):
-    return dict(zip(row.keys(), row))
+from hashlib import sha256
+def hash_(str_in):
+    return sha256(bytes(str_in, encoding="utf8")).hexdigest()
 
 def db_init(path, sql_file):
     """
@@ -154,7 +154,7 @@ def delete_operation(path, operation_id):
     """
     used to remove a operation from the database
     inputs:
-    path (string)
+    db path (string)
     operation_id (int)
     """
     try:
@@ -164,3 +164,22 @@ def delete_operation(path, operation_id):
         conn.commit()
     except Exception as e:
         print(e)
+
+def log_user(path, username, source, website, operation_id):
+    """
+    used to add a user to the loot db
+    inputs:
+    db path (string)
+    operation_id (int)
+    source (string)
+    hash_id (string)
+    """
+    # hash id used for data integerty, not for security
+    hash_id = hash_(username + source + website)
+    try:
+        conn = sqlite3.connect(path)
+        cur = conn.cursor()
+        cur.execute("INSERT INTO users(username, website, source, hash_id, operation_id) VALUES(?,?,?,?,?)", (username, website, source, hash_id, int(operation_id),))
+        conn.commit()
+    except sqlite3.IntegrityError as duplicate:
+        print(duplicate)
