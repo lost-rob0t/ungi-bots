@@ -9,7 +9,6 @@ import re
 import elasticsearch
 from elasticsearch.helpers import scan
 from utils.File_utils import write_csv, write_json
-import tqdm
 
 from utils.Elastic_Wrapper import (
     search
@@ -106,7 +105,6 @@ class Looter(cmd2.Cmd):
             data =  dump_users(self.es_host, "ut", discord_index, "discord")
             print(data)
             print("Dumping Discord Data, may take a while....")
-            prog = tqdm.tqdm(total=len(data), unit="doc/s")
             if args.c:
                 headers = ["username", "website", "source", "operation-id", "hashid"]
                 write_csv(args.c, headers, data)
@@ -117,7 +115,6 @@ class Looter(cmd2.Cmd):
                 for x in data:
                     try:
                         log_user(self.database, x["username"], x["source"], "discord.com", x["operation-id"])
-                        prog.update(1)
                     except KeyError as e:
                         continue
 
