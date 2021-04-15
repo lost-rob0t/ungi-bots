@@ -133,7 +133,6 @@ class Looter(cmd2.Cmd):
                  for x in clean_docs:
                     try:
                         log_user(self.database, x["username"], x["source"], "reddit.com", x["operation-id"])
-                        prog.update(1)
                     except KeyError as e:
                         pass
 
