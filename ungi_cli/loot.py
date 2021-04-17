@@ -103,8 +103,6 @@ class Looter(cmd2.Cmd):
         if args.d:
             discord_index = config("INDEX", "discord", self.config)
             data =  dump_users(self.es_host, "ut", discord_index, "discord")
-            print(data)
-            print("Dumping Discord Data, may take a while....")
             if args.c:
                 headers = ["username", "website", "source", "operation-id", "hashid"]
                 write_csv(args.c, headers, data)
