@@ -194,7 +194,7 @@ def update_target(path, username, target_number):
     """
     try:
         conn = sqlite3.connect(path)
-        cur = con.cursor()
+        cur = conn.cursor()
         cur.execute("UPDATE users SET is_target = ? WHERE username = ?;", (target_number, username))
         conn.commit()
     except sqlite3.DataError as e:
