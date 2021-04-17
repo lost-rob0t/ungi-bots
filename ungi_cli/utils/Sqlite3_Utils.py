@@ -4,7 +4,15 @@ import sqlite3
 from hashlib import sha256
 def hash_(str_in):
     return sha256(bytes(str_in, encoding="utf8")).hexdigest()
+from urllib.parse import urlparse
 
+def get_path(url):
+    """
+    used to return the telegram
+    group name.
+    """
+    name = urlparse(url)
+    return name.path.split("/")[1]
 def db_init(path, sql_file):
     """
     used for setup (main.py -i)
@@ -196,5 +204,42 @@ def update_target(path, username, target_number):
         cur = conn.cursor()
         cur.execute("UPDATE users SET is_target = ? WHERE username = ?;", (target_number, username))
         conn.commit()
+    except sqlite3.DataError as e:
+        print(e)
+
+
+def add_telegram(path, link, operation_id):
+    """
+    used to add a telegram chat/group
+    inputs:
+    database path (string)
+    chat link (string)
+    operation_id (int)
+    note: when the link is added we strip
+    the t.me/ and just return the group name.
+    """
+    try:
+        link =get_path(link)
+    except Exception as e:
+        print(e)
+    try:
+        conn = sqlite3.connect(path)
+        cur = conn.cursor()
+        cur.execute("INSERT INTO telegram(link, operation_id) VALUES(?,?)", (link, operation_id))
+        conn.commit()
+    except sqlite3.IntegrityError as duplicate_chat:
+        print(duplicate_chat)
+
+def list_telegram(path):
+    """
+    used to list telgram chats
+    inputs:
+    database path (string)
+    """
+    try:
+        conn = sqlite3.connect(path)
+        cur = conn.cursor()
+        data = cur.execute("SELECT * FROM telegram")
+        return data.fetchall()
     except sqlite3.DataError as e:
         print(e)

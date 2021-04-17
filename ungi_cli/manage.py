@@ -12,7 +12,12 @@ from  utils.Sqlite3_Utils import (
     create_operation,
     update_target,
     get_op_id,
-    get_op_name
+    get_op_name,
+    add_telegram,
+    list_ops,
+    list_servers,
+    list_telegram,
+    list_subreddits
     )
 
 from utils.Config import config
@@ -33,8 +38,36 @@ from cmd2.table_creator import (
     HorizontalAlignment,
 )
 
+
+# TODO make it pep8
+# TODO make all listings use the creat list table function
+
+
 def ansi_print(text):
     ansi.style_aware_write(sys.stdout, text + '\n\n')
+
+
+def create_list_table(content_type):
+    columns: List[Column] = list()
+    if content_type == "operations":
+        columns.append(Column("Name", width=24,
+                              header_horiz_align=HorizontalAlignment.CENTER,
+                              data_horiz_align=HorizontalAlignment.CENTER))
+        columns.append(Column("Description", width=30,
+                              header_horiz_align=HorizontalAlignment.CENTER,
+                              data_horiz_align=HorizontalAlignment.CENTER))
+        columns.append(Column("ID", width=12,
+                              header_horiz_align=HorizontalAlignment.CENTER,
+                              data_horiz_align=HorizontalAlignment.CENTER))
+    if content_type == "source":
+        columns.append(Column("Name", width=24,
+                              header_horiz_align=HorizontalAlignment.CENTER,
+                              data_horiz_align=HorizontalAlignment.CENTER))
+        columns.append(Column("Operation", width=24,
+                              header_horiz_align=HorizontalAlignment.CENTER,
+                              data_horiz_align=HorizontalAlignment.CENTER))
+
+    return columns
 
 
 class OperationsManager(cmd2.Cmd):
@@ -97,12 +130,7 @@ class OperationsManager(cmd2.Cmd):
         if args.o:
 
             # Building Table
-            columns: List[Column] = list()
-            columns.append(Column("ID", width=12))
-            columns.append(Column("Name", width=20))
-            columns.append(Column("Description", width=30,
-                                  header_horiz_align=HorizontalAlignment.RIGHT,
-                                  data_horiz_align=HorizontalAlignment.CENTER))
+            columns = create_list_table("operations")
 
             ops = list_ops(self.database_path)
             data_list: List[List[Any]] = list()
@@ -133,13 +161,7 @@ class OperationsManager(cmd2.Cmd):
             ansi_print(table)
 
         if args.d:
-            columns: List[Column] = list()
-            columns.append(Column("Server_ID", width=24,
-                                  header_horiz_align=HorizontalAlignment.CENTER,
-                                  data_horiz_align=HorizontalAlignment.CENTER))
-            columns.append(Column("Operation", width=24,
-                                  header_horiz_align=HorizontalAlignment.CENTER,
-                                  data_horiz_align=HorizontalAlignment.CENTER))
+            columns = create_list_table("source")
             servers = list_servers(self.database_path)
 
 
@@ -152,97 +174,39 @@ class OperationsManager(cmd2.Cmd):
             table = bt.generate_table(list_view)
             ansi_print(table)
 
-
-    # Setting up argparser
-    reddit_bulk_parser = argparse.ArgumentParser()
-    reddit_bulk_parser.add_argument("-i", "--input", help="File with list of subreddits")
-    reddit_bulk_parser.add_argument("-n", "--name", help="name of operation")
-    reddit_bulk_parser.add_argument("--id", help="operation id")
-
-    @cmd2.with_argparser(reddit_bulk_parser)
-    def do_reddit_bulk(self, args):
-        columns: List[Column] = list()
-        columns.append(Column("ID", width=12))
-        columns.append(Column("Subreddit", width=30,
-                              header_horiz_align=HorizontalAlignment.CENTER, data_horiz_align=HorizontalAlignment.CENTER))
-        reddit_list: List[List[Any]] = list()
-        subreddits = []
-        op_id = int(args.id)
-        sub_id = 1
-        with open(args.input, "r") as reddit_file:
-            for line in reddit_file:
-                reddit_list.append([sub_id, line])
-                subreddits.append(line)
-                sub_id += 1
-
-        bt = BorderedTable(columns)
-        table = bt.generate_table(reddit_list)
-        ansi_print(table)
-        choice = input("Is this ok? (y/n) ")
-        if choice == "y":
-            for sub in subreddits:
-                add_subreddit(self.database_path, sub, op_id)
-        else:
-            print("Canceled")
-
-    # Setting up argparser
-    discord_bulk = argparse.ArgumentParser()
-    discord_bulk.add_argument("-i", "--input", help="file containing discord id's")
-    discord_bulk.add_argument("-Id", help="operation id")
-
-    @cmd2.with_argparser(discord_bulk)
-    def do_discord_bulk(self, args):
-        columns: List[Column] = list()
-        columns.append(Column("ID", width=12))
-        columns.append(Column("Server ID", width=30,
-                              header_horiz_align=HorizontalAlignment.CENTER, data_horiz_align=HorizontalAlignment.CENTER))
-        reddit_list: List[List[Any]] = list()
-        subreddits = []
-        op_id = args.Id
-        sub_id = 1
-        with open(args.input, "r") as reddit_file:
-            for line in reddit_file:
-                reddit_list.append([sub_id, line])
-                subreddits.append(line)
-                sub_id += 1
-
-        bt = BorderedTable(columns)
-        table = bt.generate_table(reddit_list)
-        ansi_print(table)
-        choice = input("Is this ok? (y/n) ")
-        if choice == "y":
-            for sub in subreddits:
-                add_discord(self.database_path, sub, op_id)
-        else:
-            print("Canceled")
-
-
     # Setting up add parser
     add_parser = argparse.ArgumentParser()
     add_parser.add_argument("-d", help="Discord", action="store_true")
     add_parser.add_argument("-r", help="Reddit", action="store_true")
     add_parser.add_argument("-Id", help="Operation id")
-    add_parser.add_argument("-i", help="input")
+    add_parser.add_argument("input", help="input")
+    add_parser.add_argument("-t", help="add a tallegram link")
     @cmd2.with_argparser(add_parser)
     def do_add(self, args):
         if args.d:
             print(f"adding {args.i}")
             choice = input("is this ok? (y/n): ")
             if choice == "y":
-                add_discord(self.database_path, args.i, args.Id)
+                add_discord(self.database_path, args.input, args.Id)
             else:
                 print("Canceled")
 
         if args.r:
-            print(f"adding {args.i}")
+            print(f"adding {args.input}")
             choice = input("is this ok? (y/n): ")
             if choice == "y":
-                add_subreddit(self.database_path, args.i, args.Id)
+                add_subreddit(self.database_path, args.input, args.Id)
             else:
                 print("Canceled")
 
+        if args.t:
+            print(f"adding {args.input}")
+            choice = input("Is this ok? (y/n): ")
+            if choice == "y":
+                add_telegram(self.database_path, args.input, args.Id)
+
     target_parser = argparse.ArgumentParser()
-    target_parser.add_argument("-u", help="username")
+    target_parser.add_argument("u", help="username")
     target_parser.add_argument("-r", help="remove user from target list", action="store_true")
     target_parser.add_argument("-a", help="add user to target list", action="store_true")
     @cmd2.with_argparser(target_parser)
@@ -262,6 +226,40 @@ class OperationsManager(cmd2.Cmd):
                 update_target(self.database_path, args.u, 0)
             else:
                 print("canceled")
+
+    bulk_parser = argparse.ArgumentParser()
+    bulk_parser.add_argument("input", help="Path to input File")
+    bulk_parser.add_argument("-Id", help="operation id")
+    bulk_parser.add_argument("-d", help="add discord servers in bulk", action="store_true")
+    bulk_parser.add_argument("-r", help="add subreddits in bulk", action="store_true")
+    bulk_parser.add_argument("-t", help="add telegram in bulk", action="store_true")
+    @cmd2.with_argparser(bulk_parser)
+    def do_bulk(self, args):
+        columns = create_list_table("source")
+        data_list: List[List[Any]] = list()
+        with open(args.input, "r") as input_file:
+            for line in input_file:
+                data_list.append([line, get_op_name(self.database_path, args.Id)[0]])
+        bt = BorderedTable(columns)
+        table = bt.generate_table(data_list)
+        ansi_print(table)
+        prompt = input("Is this ok?\n(YES/NO)")
+        if prompt == "YES" or "yes":
+            if args.d:
+                with open(args.input, "r") as input_file:
+                    for line in input_file:
+                        add_discord(self.database_path, line, args.Id)
+            if args.r:
+                with open(args.input, "r") as input_file:
+                    for line in input_file:
+                        add_subreddit(self.database_path, line, args.Id)
+            if args.t:
+                with open(args.input, "r") as input_file:
+                    for line in input_file:
+                        add_telegram(self.database_path, line, args.Id)
+
+        if prompt == "NO" or "no":
+            print("canceled")
 
 if __name__ == '__main__':
     import sys
