@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-import cmd2
+import cmd2, cmd2.ansi
+from typing import List, Any
 from utils.Config import config, list_index
 import asyncio
 from os import environ
@@ -14,15 +15,89 @@ from utils.Elastic_Wrapper import (
     search
 )
 from utils.Sqlite3_Utils import log_user, hash_
+from cmd2.table_creator import (
+    BorderedTable,
+    Column,
+    HorizontalAlignment,
+)
 
 
 
 user_fields = ["ut", "author", "op"]
-content_list = ["m", "body", "text"]
+content_list = ["m", "body", "text", "title"]
+
+def ansi_print(text):
+    cmd2.ansi.style_aware_write(sys.stdout, text + '\n\n')
 
 
-async def run_search(host, query):
-    await search(host, query)
+def build_search_table(content_type):
+    """
+    Used to Build the data table
+    """
+    columns: List[Column] = list()
+    columns.append(Column("User", width=30,
+                          header_horiz_align=HorizontalAlignment.CENTER,
+                          data_horiz_align=HorizontalAlignment.CENTER))
+    columns.append(Column("content", width=50,
+                          header_horiz_align=HorizontalAlignment.CENTER,
+                          data_horiz_align=HorizontalAlignment.LEFT))
+    if content_type == "discord":
+        columns.append(Column("channel", width=24,
+                              header_horiz_align=HorizontalAlignment.CENTER,
+                              data_horiz_align=HorizontalAlignment.CENTER))
+        columns.append(Column("Server", width=30,
+                              header_horiz_align=HorizontalAlignment.CENTER,
+                              data_horiz_align=HorizontalAlignment.CENTER))
+    else:
+        columns.append(Column("Source", width=30,
+                              header_horiz_align=HorizontalAlignment.CENTER,
+                              data_horiz_align=HorizontalAlignment.CENTER))
+
+    columns.append(Column("Date", width=28,
+                          header_horiz_align=HorizontalAlignment.CENTER,
+                          data_horiz_align=HorizontalAlignment.CENTER))
+    if content_type == "reddit":
+        columns.append(Column("Post Type", width=12,
+                              header_horiz_align=HorizontalAlignment.CENTER,
+                              data_horiz_align=HorizontalAlignment.CENTER))
+
+    return columns
+
+def content_search(es_host, index, search_term, site, limit=25):
+    es = elasticsearch.Elasticsearch([es_host])
+
+    if site == "discord" or "telegram":
+        q = {
+            "query": {
+                "match": {
+                    "m": search_term
+            }}}
+    if site == "reddit":
+        q = {
+            "query": {
+                "multi_match": {
+                    "query": search_term,
+                    "fields": ["body", "post-title", "text"]
+                }
+            }
+        }
+
+    data = es.search(body=q, index=index, size=limit)
+    return data
+def search_by_user(es_host, index, username, site, limit=25):
+    es = elasticsearch.Elasticsearch([es_host])
+    if site == "discord" or "telegram":
+        q = {"query": {"match": {"ut": username}}}
+    if site == "reddit":
+        q = {
+            "query": {
+                "multi_match": {
+                    "query": username,
+                    "fields": ["author", "op"]}}}
+
+    data = es.search(body=q, index=index, size=limit)
+    return data
+
 def dump_users(es_host, field, index, site):
     es = elasticsearch.Elasticsearch([es_host])
     q = {
@@ -32,6 +107,7 @@ def dump_users(es_host, field, index, site):
             }
         }
     }
+
 
     data = scan(es, q, scroll="5m", index=index, size=10000)
     doc_dump = []
@@ -137,7 +213,73 @@ class Looter(cmd2.Cmd):
                     except KeyError as e:
                         print(e)
 
+    search_parser = argparse.ArgumentParser()
+    search_parser.add_argument("search_term", help="Search input")
+    search_parser.add_argument("-t", help="Search telegram", action="store_true")
+    search_parser.add_argument("-d", help="Search discord", action="store_true")
+    search_parser.add_argument("-r", help="Search reddit", action="store_true")
+    search_parser.add_argument("-D", help="dump users", action="store_true")
+    search_parser.add_argument("-M", help="save messages to database", action="store_true")
+    search_parser.add_argument("-m", help="save messages and users to csv")
+    search_parser.add_argument("-l", help="limit number of results", default=25)
+    search_parser.add_argument("-u", help="Search By username", action="store_true")
+    @cmd2.with_argparser(search_parser)
+    def do_search(self, args):
+        if args.d:
+            discord = config("INDEX", "discord", self.config)
+            if args.u:
+                data = search_by_user(self.es_host, discord, args.search_term, "discord", limit=args.l)
+            else:
+                data = content_search(self.es_host, discord, args.search_term, "discord", limit=args.l)
+            data_list: List[List[List[Any]]] = list()
+            for doc in data["hits"]['hits']:
+                doc = doc["_source"]
+                data_list.append([doc["ut"], doc["m"], doc["cn"], doc["sn"], doc["date"]])
 
+            bt = BorderedTable(build_search_table("discord"))
+            table = bt.generate_table(data_list)
+            ansi_print(table)
+
+            if args.D:
+                for doc in data["hits"]["hits"]:
+                    doc = doc["_source"]
+                    try:
+                        log_user(self.database, doc["ut"], doc["sn"], "discord.com", doc["operation-id"])
+                    except KeyError:
+                        print(f"server {doc['sn']} is not in the database\nSever id: {doc['sid']}")
+
+
+        if args.r:
+            reddit = config("INDEX", "reddit", self.config)
+            if args.u:
+                 data = search_by_user(self.es_host, reddit, args.search_term, "reddit", limit=args.l)
+            else:
+                data = content_search(self.es_host, reddit, args.search_term, "reddit", limit=args.l)
+            data_list: List[List[List[Any]]] = list()
+            for doc in data["hits"]['hits']:
+                doc = doc["_source"]
+                try:
+                    data_list.append([doc["author"], doc["body"], doc["subreddit"], doc["date"], "Comment"])
+                except KeyError:
+                    try:
+                        data_list.append([doc["op"], doc["text"], doc["subreddit"], doc["date"], "Post text"])
+                    except KeyError:
+                        try:
+                            data_list.append([doc["op"], doc["post-title"], doc["subreddit"], doc["date"], "Post Name"])
+                        except KeyError:
+                            data_list.append([doc["op"], doc["link"], doc["subreddit"], doc["date"], "Post Link"])
+
+            bt = BorderedTable(build_search_table("reddit"))
+            table = bt.generate_table(data_list)
+            ansi_print(table)
+
+            if args.D:
+                for doc in data["hits"]["hits"]:
+                    doc = doc["_source"]
+                    try:
+                        log_user(self.database, doc["author"], doc["subreddit"], "reddit.com", doc["operation-id"])
+                    except KeyError:
+                        log_user(self.database, doc["op"], doc["subreddit"], "reddit.com", doc["operation-id"])
 if __name__ == "__main__":
     import sys
     loot = Looter()

@@ -182,8 +182,7 @@ def log_user(path, username, source, website, operation_id):
         cur.execute("INSERT INTO users(username, website, source, hash_id, operation_id) VALUES(?,?,?,?,?)", (username, website, source, hash_id, int(operation_id),))
         conn.commit()
     except sqlite3.IntegrityError as duplicate:
-        print(duplicate)
-
+        pass
 
 def update_target(path, username, target_number):
     """

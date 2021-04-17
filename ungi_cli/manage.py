@@ -28,11 +28,9 @@ from cmd2 import (
     ansi,
 )
 from cmd2.table_creator import (
-    AlternatingTable,
     BorderedTable,
     Column,
     HorizontalAlignment,
-    SimpleTable,
 )
 
 def ansi_print(text):
