@@ -119,9 +119,8 @@ class OperationsManager(cmd2.Cmd):
     list_parser = argparse.ArgumentParser()
     list_parser.add_argument("-r", help="Show Subreddits", action="store_true")
     list_parser.add_argument("-d", help="Show Discord Servers", action="store_true")
-    list_parser.add_argument("-a", help="Show evrything", action="store_true")
     list_parser.add_argument("-o", help="Show ops", action="store_true")
-
+    list_parser.add_argument("-t", help="telgram", action="store_true")
     @cmd2.with_argparser(list_parser)
     def do_list(self, args):
 
@@ -142,13 +141,7 @@ class OperationsManager(cmd2.Cmd):
             ansi_print(table)
 
         if args.r:
-            columns: List[Column] = list()
-            columns.append(Column("Name", width=24,
-                                  header_horiz_align=HorizontalAlignment.CENTER,
-                                  data_horiz_align=HorizontalAlignment.CENTER))
-            columns.append(Column("Operation", width=24,
-                                  header_horiz_align=HorizontalAlignment.CENTER,
-                                  data_horiz_align=HorizontalAlignment.CENTER))
+            columns = create_list_table("source")
             subs = list_subreddits(self.database_path)
 
             list_view: List[Any] = list()
@@ -173,6 +166,21 @@ class OperationsManager(cmd2.Cmd):
             bt = BorderedTable(columns)
             table = bt.generate_table(list_view)
             ansi_print(table)
+
+        if args.t:
+            columns = create_list_table("source")
+            servers = list_telegram(self.database_path)
+
+
+            list_view: List[Any] = list()
+
+            #Building the data that gos into the table
+            for server in servers:
+                list_view.append([server[1], get_op_name(self.database_path, server[2])[0]])
+            bt = BorderedTable(columns)
+            table = bt.generate_table(list_view)
+            ansi_print(table)
+
 
     # Setting up add parser
     add_parser = argparse.ArgumentParser()

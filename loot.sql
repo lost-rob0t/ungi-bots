@@ -6,7 +6,7 @@ CREATE TABLE "operations" (
 );
 CREATE TABLE "discord" (
 	"discord_id"	INTEGER NOT NULL,
-	"server_id"	INTEGER NOT NULL,
+	"server_id"	INTEGER NOT NULL UNIQUE,
 	"operation_id"	INTEGER NOT NULL,
 	FOREIGN KEY("operation_id") REFERENCES "operations"("operation_id") ON DELETE CASCADE,
 	PRIMARY KEY("discord_id")
