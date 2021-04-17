@@ -54,7 +54,6 @@ def dump_users(es_host, field, index, site):
                 x["username"] = i["op"]
             except KeyError:
                 x["username"] = i["author"]
-                continue
             x["source"] = i["subreddit"]
             x["website"] = "Reddit"
             x["hashid"] = hash_(x["username"] + x["source"])
@@ -98,6 +97,7 @@ class Looter(cmd2.Cmd):
     dump_parser.add_argument("-a", help="dump all users", action="store_true")
     dump_parser.add_argument("-c", help="Dump to csv file")
     dump_parser.add_argument("-j", help="Dump to json file")
+    dump_parser.add_argument("-D", help="Dump to database", action="store_true", default=False)
     @cmd2.with_argparser(dump_parser)
     def do_dump_users(self, args):
         if args.d:
@@ -111,30 +111,34 @@ class Looter(cmd2.Cmd):
             if args.j:
                 write_json(args.j, data)
 
-            else:
+            if args.D:
                 for x in data:
-                    try:
-                        log_user(self.database, x["username"], x["source"], "discord.com", x["operation-id"])
-                    except KeyError as e:
-                        continue
+                    log_user(self.database, x["username"], x["source"], "discord.com", x["operation-id"])
 
+        # if the reddit flag is set
         if args.r:
             reddit_index = config("INDEX", "reddit", self.config)
             data = dump_users(self.es_host, "op", reddit_index, "reddit")
             data2 = dump_users(self.es_host, "author", reddit_index, "reddit")
             new_data = data + data2
             clean_docs = list({item["hashid"]: item for item in new_data}.values())
+
+            # if csv flag is set
             if args.c:
                 headers = ["username", "website", "source", "operation-id", "hashid"]
                 write_csv(args.c, headers, clean_docs)
+            # if the json flag is set
             if args.j:
                 write_json(args.json, clean_docs)
-            else:
+
+            # save to database if the flag is set, will take a while
+            if args.D:
                  for x in clean_docs:
                     try:
                         log_user(self.database, x["username"], x["source"], "reddit.com", x["operation-id"])
                     except KeyError as e:
-                        pass
+                        print(e)
+
 
 if __name__ == "__main__":
     import sys
