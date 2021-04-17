@@ -4,17 +4,17 @@ import argparse
 import json
 import cmd2
 from  utils.Sqlite3_Utils import (
-    create_operation,
-    list_ops,
-    add_subreddit,
-    get_op_id,
-    add_discord,
-    list_servers,
-    list_subreddits,
-    get_op_name,
-    add_watch_word,
     delete_operation,
-)
+    add_discord,
+    add_watch_word,
+    add_subreddit,
+    delete_operation,
+    create_operation,
+    update_target,
+    get_op_id,
+    get_op_name
+    )
+
 from utils.Config import config
 from os import environ
 import functools
@@ -242,6 +242,28 @@ class OperationsManager(cmd2.Cmd):
                 add_subreddit(self.database_path, args.i, args.Id)
             else:
                 print("Canceled")
+
+    target_parser = argparse.ArgumentParser()
+    target_parser.add_argument("-u", help="username")
+    target_parser.add_argument("-r", help="remove user from target list", action="store_true")
+    target_parser.add_argument("-a", help="add user to target list", action="store_true")
+    @cmd2.with_argparser(target_parser)
+    def do_target(self, args):
+        if args.a:
+            print(args.u)
+            prompt = input("Are you sure you want to add this user to the target list?\n(y/n): ")
+            if prompt == "y":
+                update_target(self.database_path, args.u, 1)
+            else:
+                print("canceled")
+
+        else:
+            print(args.u)
+            prompt = input("Are you sure you want to remove this user from the target list?\n(y/n): ")
+            if prompt == "y":
+                update_target(self.database_path, args.u, 0)
+            else:
+                print("canceled")
 
 if __name__ == '__main__':
     import sys

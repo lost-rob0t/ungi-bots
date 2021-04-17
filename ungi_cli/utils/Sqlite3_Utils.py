@@ -183,3 +183,19 @@ def log_user(path, username, source, website, operation_id):
         conn.commit()
     except sqlite3.IntegrityError as duplicate:
         print(duplicate)
+
+
+def update_target(path, username, target_number):
+    """
+    used to update a user to the target list
+    inputs:
+    db path (string)
+    operation_id
+    """
+    try:
+        conn = sqlite3.connect(path)
+        cur = con.cursor()
+        cur.execute("UPDATE users SET is_target = ? WHERE username = ?;", (target_number, username))
+        conn.commit()
+    except sqlite3.DataError as e:
+        print(e)

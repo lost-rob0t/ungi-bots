@@ -25,7 +25,7 @@ CREATE TABLE "users" (
 	"source"	TEXT NOT NULL,
 	"hash_id"	TEXT NOT NULL UNIQUE,
 	"operation_id"	INTEGER NOT NULL,
-	"is_target" INTEGER NOT NULL,
+	"is_target" INTEGER NOT NULL DEFAULT 0,
 	FOREIGN KEY("operation_id") REFERENCES "operations"("operation_id") ON DELETE CASCADE,
 	PRIMARY KEY("user_id")
 );
