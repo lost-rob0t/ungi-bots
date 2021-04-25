@@ -66,7 +66,6 @@ async def doc_builder(message, client, chat_list):
             except ValueError as e:
                 username = await client.get_entity(PeerUser(abs(message.sender_id)))
                 doc["ut"] = username.username
-                print(username)
                 group = await client.get_entity(abs(message.peer_id.channel_id))
                 if group is None:
                     doc["group"] = doc["ut"]
@@ -132,6 +131,32 @@ async def get_messages(client, es_host, index, chats, watch_list):
                     except AttributeError as e:
                         pass  # bad yes, but no error spam.
 
+
+                try:
+                    if message.media.webpage:
+                        web_loot = {}
+                        web_loot["type"] = url
+                        web_loot["url"] = message.media.webpage.url
+                        web_loot["site"] = message.media.webpage.site_name
+                        web_loot["discription"] = message.media.webpage.description
+                        web_loot["title"] = message.media.webpage.title
+                        web_loot["display_url"] = message.media.webpage.display_url
+                        web_loot["source-site"] = "telegram"
+                        try:
+                            web_loot["author"] = message.media.webpage.author
+                        except KeyError:
+                            pass
+                        try:
+                            web_loot["source"] = d["group"]
+                        except KeyError:
+                            web_loot["source"] = d["ut"]
+                        if web_loot["title"] is None:
+                            web_loot["title"] = "None"
+                        hash_id = hash_(web_loot["url"] + web_loot["title"] + web_loot["source"])
+                        await insert_doc(es_host, loot_index, web_loot, hash_id)
+                except AttributeError:
+                    pass
+
         except ChannelPrivateError:
             print(f"{chat} is private")
 
@@ -150,7 +175,7 @@ async def main():
     args = parser.parse_args()
 
     global config_file
-    # we try to load config path from enviroment first
+    # we try to load config setting then to env var
     try:
         config_file = args.config
     except KeyError as no_env:
@@ -159,6 +184,8 @@ async def main():
     # config setup
     # TODO create a class for this
     telegram_index = config("INDEX", "telegram", config_file)
+    global loot_index
+    loot_index = config("INDEX", "loot", config_file)
     api_id = config("TELEGRAM", "api_id", config_file)
     api_hash = config("TELEGRAM", "api_hash", config_file)
     api_session_file = config("TELEGRAM", "session_file", config_file)
@@ -209,7 +236,33 @@ async def main():
                             else:
                                 await client.download_media(event.message.media, path)
                 except AttributeError as e:
-                    pass  # bad yes, but no error spam.
+                    pass  # bad yes, but no error spam
+
+            try:
+                if event.message.media.webpage:
+                    web_loot = {}
+                    web_loot["type"] = url
+                    web_loot["url"] = message.media.webpage.url
+                    web_loot["site"] = message.media.webpage.site_name
+                    web_loot["discription"] = message.media.webpage.description
+                    web_loot["title"] = message.media.webpage.title
+                    web_loot["display_url"] = message.media.webpage.display_url
+                    web_loot["source-site"] = "telegram"
+                    try:
+                        web_loot["author"] = message.media.webpage.author
+                    except KeyError:
+                        pass
+                    try:
+                        web_loot["source"] = d["group"]
+                    except KeyError:
+                        web_loot["source"] = d["ut"]
+                    if web_loot["title"] is None:
+                        web_loot["title"] = "None"
+                    hash_id = hash_(web_loot["url"] + web_loot["title"] + web_loot["source"])
+                    await insert_doc(es_host, loot_index, web_loot, hash_id)
+            except AttributeError:
+                pass
+
         await client.run_until_disconnected()
 
 loop = asyncio.get_event_loop()
