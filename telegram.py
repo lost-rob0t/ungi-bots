@@ -135,7 +135,7 @@ async def get_messages(client, es_host, index, chats, watch_list):
                 try:
                     if message.media.webpage:
                         web_loot = {}
-                        web_loot["type"] = url
+                        web_loot["type"] = "url"
                         web_loot["url"] = message.media.webpage.url
                         web_loot["site"] = message.media.webpage.site_name
                         web_loot["discription"] = message.media.webpage.description
@@ -241,7 +241,7 @@ async def main():
             try:
                 if event.message.media.webpage:
                     web_loot = {}
-                    web_loot["type"] = url
+                    web_loot["type"] = "url"
                     web_loot["url"] = message.media.webpage.url
                     web_loot["site"] = message.media.webpage.site_name
                     web_loot["discription"] = message.media.webpage.description
