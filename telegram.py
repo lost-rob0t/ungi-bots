@@ -142,6 +142,7 @@ async def get_messages(client, es_host, index, chats, watch_list):
                         web_loot["title"] = message.media.webpage.title
                         web_loot["display_url"] = message.media.webpage.display_url
                         web_loot["source-site"] = "telegram"
+                        web_loot["date"] = aslocaltimestr(message.date)
                         try:
                             web_loot["author"] = message.media.webpage.author
                         except KeyError:
@@ -248,6 +249,7 @@ async def main():
                     web_loot["title"] = message.media.webpage.title
                     web_loot["display_url"] = message.media.webpage.display_url
                     web_loot["source-site"] = "telegram"
+                    web_loot["date"] = aslocaltimestr(event.message.date)
                     try:
                         web_loot["author"] = message.media.webpage.author
                     except KeyError:
