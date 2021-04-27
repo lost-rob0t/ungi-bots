@@ -58,3 +58,11 @@ CREATE TABLE "loot" (
 	FOREIGN KEY("operation_id") REFERENCES "operations"("operation_id") ON DELETE CASCADE,
 	PRIMARY KEY("loot_id")
 );
+CREATE TABLE "telegram" (
+	"telegram_id"	INTEGER NOT NULL,
+	"operation_id"	INTEGER NOT NULL,
+	"name"	TEXT NOT NULL,
+	"chan_id"	INTEGER NOT NULL UNIQUE,
+	PRIMARY KEY("telegram_id"),
+	FOREIGN KEY("operation_id") REFERENCES "operations"("operation_id") ON DELETE CASCADE
+);
