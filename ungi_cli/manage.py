@@ -50,22 +50,51 @@ def ansi_print(text):
 def create_list_table(content_type):
     columns: List[Column] = list()
     if content_type == "operations":
-        columns.append(Column("Name", width=24,
+        """
+        Builds Operations listing.
+        """
+
+        columns.append(Column("ID", width=12,
+                              header_horiz_align=HorizontalAlignment.CENTER,
+                              data_horiz_align=HorizontalAlignment.CENTER))
+        columns.append(Column("Name", width=30,
                               header_horiz_align=HorizontalAlignment.CENTER,
                               data_horiz_align=HorizontalAlignment.CENTER))
         columns.append(Column("Description", width=30,
                               header_horiz_align=HorizontalAlignment.CENTER,
                               data_horiz_align=HorizontalAlignment.CENTER))
-        columns.append(Column("ID", width=12,
-                              header_horiz_align=HorizontalAlignment.CENTER,
-                              data_horiz_align=HorizontalAlignment.CENTER))
+
     if content_type == "source":
+        """
+        Builds the normal source table
+        used for discord, reddit
+        """
         columns.append(Column("Name", width=24,
                               header_horiz_align=HorizontalAlignment.CENTER,
                               data_horiz_align=HorizontalAlignment.CENTER))
         columns.append(Column("Operation", width=24,
                               header_horiz_align=HorizontalAlignment.CENTER,
                               data_horiz_align=HorizontalAlignment.CENTER))
+
+
+    if content_type == "telegram":
+        """
+        Builds telegram chat table
+        Needed because you need to see the
+        "channel id" and the channel name/title
+        """
+
+        columns.append(Column("Channel ID", width=20,
+                              header_horiz_align=HorizontalAlignment.CENTER,
+                              data_horiz_align=HorizontalAlignment.CENTER))
+        columns.append(Column("Name", width=30,
+                              header_horiz_align=HorizontalAlignment.CENTER,
+                              data_horiz_align=HorizontalAlignment.CENTER))
+        columns.append(Column("Operation", width=24,
+                              header_horiz_align=HorizontalAlignment.CENTER,
+                              data_horiz_align=HorizontalAlignment.CENTER))
+
+
 
     return columns
 
@@ -94,7 +123,7 @@ class OperationsManager(cmd2.Cmd):
 
 
     operations_parser = argparse.ArgumentParser()
-    operations_parser.add_argument("-c", "--create")
+    operations_parser.add_argument("create", help="Input name")
     operations_parser.add_argument("-d", "--desc", help="Description for the Operation")
     operations_parser.add_argument("--remove", help="remove an Operation with all data and loot associated with it")
     @cmd2.with_argparser(operations_parser)
@@ -111,6 +140,8 @@ class OperationsManager(cmd2.Cmd):
                 print("Type YES or NO")
         if args.create:
              print(f"Creating operation: {args.create}")
+             if args.desc is None:
+                 args.desc = "No Description"
              create_operation(self.database_path, args.create, args.desc)
 
 
@@ -168,15 +199,15 @@ class OperationsManager(cmd2.Cmd):
             ansi_print(table)
 
         if args.t:
-            columns = create_list_table("source")
+            columns = create_list_table("telegram")
             servers = list_telegram(self.database_path)
 
 
-            list_view: List[Any] = list()
+            list_view: List[List[Any]] = list()
 
             #Building the data that gos into the table
             for server in servers:
-                list_view.append([server[1], get_op_name(self.database_path, server[2])[0]])
+                list_view.append([server[0], server[1], get_op_name(self.database_path, server[2])[0]])
             bt = BorderedTable(columns)
             table = bt.generate_table(list_view)
             ansi_print(table)
@@ -264,7 +295,11 @@ class OperationsManager(cmd2.Cmd):
             if args.t:
                 with open(args.input, "r") as input_file:
                     for line in input_file:
-                        add_telegram(self.database_path, line, args.Id)
+                        try:
+                            chan_id, name = line.split("|")
+                        except ValueError:
+                            name = input(f"Name for {chan_id}?: ")
+                        add_telegram(self.database_path, chan_id, args.Id, name)
 
         if prompt == "NO" or "no":
             print("canceled")

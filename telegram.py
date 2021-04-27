@@ -9,7 +9,7 @@ import datetime
 from telethon import TelegramClient, events, sync, utils
 from telethon.tl.functions.messages import GetHistoryRequest
 from telethon.tl.types import PeerChannel, PeerUser, PeerChat, Photo
-from telethon.errors.rpcerrorlist import ChatAdminRequiredError, ChannelPrivateError
+from telethon.errors.rpcerrorlist import ChatAdminRequiredError, ChannelPrivateError, FloodWaitError
 import asyncio
 import argparse
 from time import sleep
@@ -50,71 +50,50 @@ async def log_message(es_host, index, input_dict):
 
 async def doc_builder(message, client, chat_list):
     doc = {}
-    if message.sender_id:
-        if message.message:
-            #fixed_date = datetime.datetime.strftime(message.date, "%Y-%m-%d %H:%M:%S.%f")
-            fixed_date = str(aslocaltimestr(message.date))
-            doc["m"] = message.raw_text
-            doc["date"] = fixed_date
-            # print(str(message.date.now()))
-            doc["sender-id"] = str(abs(message.sender_id))
-            try:
-                username = await client.get_entity(abs(message.sender_id))
-                doc["ut"] = username.username
-                group = await client.get_entity(abs(message.peer_id.channel_id))
-                doc["group"] = group.title
-            except ValueError as e:
-                username = await client.get_entity(PeerUser(abs(message.sender_id)))
-                doc["ut"] = username.username
-                group = await client.get_entity(abs(message.peer_id.channel_id))
-                if group is None:
-                    doc["group"] = doc["ut"]
-                else:
-                    doc["group"] = group.title
-                for chat_name in chat_list:
-                    name = chat_name["id"]
-                    if group.username == name:
-                        doc["operation-id"] = chat_name["operation"]
+    if message:
+        sender_data = await message.get_sender()
+        chat_data = await message.get_chat()
+        doc["group"] = chat_data.title
+
+        try:
+            doc["ut"] = sender_data.username
+        except AttributeError:
+
+            fn = getattr(sender_data, "first_name", None)
+            ln = getattr(sender_data, "last_name", None)
+
+            if fn and ln is not None:
+                doc["ut"] = fn + " " + ln
+            if ln is None:
+                doc["ut"] = fn
+            else:
+                doc["ut"] = ln
+
+        doc["date"] = aslocaltimestr(message.date)
+        doc["m"] = message.raw_text
+
+
+        for chat in chat_list:
+            chan_id = chat["chan-id"]
+            if abs(chat_data.id) == abs(chan_id):
+                print("op found!")
+                doc["operation-id"] = chat["op-id"]
+
 
     return doc
 
 
-async def get_id(chats, client):
-    """
-    used to get the id for each chat.
-    returns a a list of acess hashes
-    """
-    chat_ids = []
-    for chat in chats:
-        try:
-            id = await client.get_peer_id(chat)
-            real_id, peer_type = utils.resolve_id(abs(id))
-            chat_ids.append(abs(real_id))
-        except ValueError:
-            try:
-                id = await client.get_entity(chat)
-                real_id, peer_type = utils.resolve_id(abs(id))
-                chat_ids.append(abs(real_id))
-            except ValueError:
-                chat = "t.me/joinchat/" + chat
-                print(chat)
-                group_chat = await client.get_entity(chat)
-                print(abs(group_chat.access_hash))
-                if group_chat.access_hash != 0:
-                    real_id, peer_type = utils.resolve_id(
-                        abs(group_chat.access_hash))
-                    chat_ids.append(abs(real_id))
-    return chat_ids
 
 
-async def get_messages(client, es_host, index, chats, watch_list):
+async def get_messages(client, es_host, index, watch_list):
     """
     Used to grab all available messages
     """
-    for chat in chats:
+    for chat in watch_list:
         try:
-            async for message in client.iter_messages(chat):
+            async for message in client.iter_messages(chat["chan-id"]):
                 d = await doc_builder(message, client, watch_list)
+                print(d)
                 await log_message(es_host, index, d)
                 if media_path:
                     try:
@@ -153,7 +132,7 @@ async def get_messages(client, es_host, index, chats, watch_list):
                             web_loot["source"] = d["ut"]
                         if web_loot["title"] is None:
                             web_loot["title"] = "None"
-                        hash_id = hash_(web_loot["url"] + web_loot["title"] + web_loot["source"])
+                        hash_id = hash_(web_loot["url"] + web_loot["source"])
                         await insert_doc(es_host, loot_index, web_loot, hash_id)
                 except AttributeError:
                     pass
@@ -173,6 +152,7 @@ async def main():
         "--full",
         help="Get complete Chat Histories",
         action="store_true")
+    parser.add_argument("-s", "--show", help="Show channel id so you can add them to db", action='store_true')
     args = parser.parse_args()
 
     global config_file
@@ -202,27 +182,52 @@ async def main():
     local_tz = pytz.timezone(timezone)
     # We are retreiving the list of servers in the watch list
     watch_list = []
-    chats = []
-
-    for chat in list_telegram(database):
-        chat_watch = {}
-        chat_watch["id"] = chat[1]
-        chat_watch["operation"] = chat[2]
-        chats.append(chat_watch["id"])
-        watch_list.append(chat_watch)
+    chat_id_list = []
 
     async with client:
-        chat_ids = await get_id(chats, client)
-        shuffle(chat_ids)  # randomized
+
+        for chat in list_telegram(database):
+            chat_watch = {}
+            real_id = utils.resolve_id(abs(chat[0]))[0]
+            chat_watch["rid"] = real_id
+            #Note: this is checking for a prefix of 100.
+            if int(str(abs(real_id))[:3]) == 100:
+                real_id = int(str(abs(real_id))[3:])
+            chat_watch["id"] = real_id
+            chat_watch["operation"] = int(chat[2])
+            watch_list.append(chat_watch)
+
+
         dialogs = await client.get_dialogs()
 
+        channel_list = []
+        for chan in dialogs:
+            if args.show:
+                print(f"{abs(chan.id)}|{chan.title}")
+            d = {}
+            for chat in watch_list:
+                if int(str(abs(chan.id))[:3]) == 100:
+                    chan.id = int(str(abs(chan.id))[3:])
+                if chan.id == chat["id"]:
+                    chat_id_list.append(abs(chan.id))
+                    d["op-id"] = chat["operation"]
+                    d["chan-id"] = abs(chat['id'])
+                    channel_list.append(d)
+
+        if args.show:
+            for id in channel_list:
+                print(id)
+
         if args.full:
-            await get_messages(client, es_host, telegram_index, chat_ids, watch_list)
+
+            shuffle(channel_list)  # randomized
+            await get_messages(client, es_host, telegram_index, channel_list)
             print("done, waiting to avoid timeouts")
 
-        @client.on(events.NewMessage(chats=chat_ids))
+        @client.on(events.NewMessage(chats=chat_id_list))
         async def newMessage(event):
             d = await doc_builder(event.message, client, watch_list)
+            print(d)
             await log_message(es_host, telegram_index, d)
             if media_path:
                 try:
@@ -248,7 +253,7 @@ async def main():
                     web_loot["discription"] = message.media.webpage.description
                     web_loot["title"] = message.media.webpage.title
                     web_loot["display_url"] = message.media.webpage.display_url
-                    web_loot["source-site"] = "telegram"
+                    web_loot["source_site"] = "telegram"
                     web_loot["date"] = aslocaltimestr(event.message.date)
                     try:
                         web_loot["author"] = message.media.webpage.author
@@ -264,6 +269,8 @@ async def main():
                     await insert_doc(es_host, loot_index, web_loot, hash_id)
             except AttributeError:
                 pass
+
+
 
         await client.run_until_disconnected()
 

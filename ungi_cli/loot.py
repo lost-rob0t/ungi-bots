@@ -115,10 +115,14 @@ def dump_users(es_host, field, index, site):
     for i in data:
         i = i["_source"]
         x = {}
-        if site == "discord":
+        if site == "discord" or "telegram":
             x["username"] = i["ut"]
-            x["source"] = i["sn"]
-            x["website"] = "Discord"
+            if site == "discord":
+                x["source"] = i["sn"]
+                x["website"] = "Discord"
+            else:
+                x["website"] = "Telegram"
+                x["source"] = i["group"]
             x["hashid"] = hash_(x["username"] + x["source"])
             try:
                 x["operation-id"] = i["operation-id"]
@@ -170,7 +174,6 @@ class Looter(cmd2.Cmd):
     dump_parser.add_argument("-r", help="dump reddit users", action="store_true")
     dump_parser.add_argument("-d", help="dump discord users ", action="store_true")
     dump_parser.add_argument("-t", help="dump telegram telegram users", action="store_true")
-    dump_parser.add_argument("-a", help="dump all users", action="store_true")
     dump_parser.add_argument("-c", help="Dump to csv file")
     dump_parser.add_argument("-j", help="Dump to json file")
     dump_parser.add_argument("-D", help="Dump to database", action="store_true", default=False)
@@ -213,6 +216,26 @@ class Looter(cmd2.Cmd):
                     except KeyError as e:
                         print(e)
 
+        if args.t:
+            telegram_index = config("INDEX", "telegram", self.config)
+            data = dump_users(self.es_host, "ut", telegram_index, "telegram")
+            clean_docs = list({item["hashid"]: item for item in data}.values())
+
+            # if csv flag is set
+            if args.c:
+                headers = ["username", "website", "source", "operation-id", "hashid"]
+                write_csv(args.c, headers, clean_docs)
+            # if the json flag is set
+            if args.j:
+                write_json(args.json, clean_docs)
+
+            # save to database if the flag is set, will take a while
+            if args.D:
+                 for x in clean_docs:
+                    try:
+                        log_user(self.database, x["username"], x["source"], "telegram.com", x["operation-id"])
+                    except KeyError as e:
+                        print(e)
     search_parser = argparse.ArgumentParser()
     search_parser.add_argument("search_term", help="Search input")
     search_parser.add_argument("-t", help="Search telegram", action="store_true")

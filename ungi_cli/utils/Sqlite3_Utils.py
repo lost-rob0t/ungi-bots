@@ -208,27 +208,23 @@ def update_target(path, username, target_number):
         print(e)
 
 
-def add_telegram(path, link, operation_id):
+def add_telegram(path, chan_id, operation_id, name):
     """
     used to add a telegram chat/group
     inputs:
     database path (string)
-    chat link (string)
+    chan_id (int)
     operation_id (int)
-    note: when the link is added we strip
-    the t.me/ and just return the group name.
+    name (string)
     """
-    try:
-        link =get_path(link)
-    except Exception as e:
-        print(e)
+
     try:
         conn = sqlite3.connect(path)
         cur = conn.cursor()
-        cur.execute("INSERT INTO telegram(link, operation_id) VALUES(?,?)", (link, operation_id))
+        cur.execute("INSERT INTO telegram(chan_id, name, operation_id) VALUES(?,?,?)", (chan_id, name, operation_id))
         conn.commit()
     except sqlite3.IntegrityError as duplicate_chat:
-        print(duplicate_chat)
+        print(f"{chan_id} {name} Was already in db!")
 
 def list_telegram(path):
     """
@@ -239,7 +235,7 @@ def list_telegram(path):
     try:
         conn = sqlite3.connect(path)
         cur = conn.cursor()
-        data = cur.execute("SELECT * FROM telegram")
+        data = cur.execute("SELECT chan_id, name, operation_id FROM telegram")
         return data.fetchall()
     except sqlite3.DataError as e:
         print(e)
