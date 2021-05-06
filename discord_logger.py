@@ -6,14 +6,16 @@ import datetime
 import asyncio
 import json
 from ungi_utils.Elastic_Wrapper import insert_doc
-from ungi_utils.Config import config
+from ungi_utils.Config import auto_load, UngiConfig
 from ungi_utils.Sqlite3_Utils import list_servers, hash_  # For setting operation
 from os import environ
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--token", help="Logs in with this token")
 parser.add_argument("-d", "--db", help="database path")
 parser.add_argument("-m", "--max", help="max history, dont go over 2000")
+parser.add_argument("--config", help="path to config")
 parser.add_argument(
+
     "-c",
     "--connection",
     help="host",
@@ -23,10 +25,12 @@ args = parser.parse_args()
 oni = discord.Client()
 
 # config stuff
+config_file = auto_load(args.config)
 conf_file = environ['UNGI_CONFIG']  # pulling config from environment
-database = config("DB", "path", conf_file)  # database path
+CONFIG = UngiConfig(conf_file)
+database = CONFIG.db_path  # database path
 # index setting where messages are stored
-index = config("INDEX", "discord", conf_file)
+index = CONFIG.discord
 print(conf_file)
 
 # We are retreiving the list of servers in the watch list

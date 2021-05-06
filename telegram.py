@@ -3,7 +3,8 @@
 #!/usr/bin/env python3
 from ungi_cli.utils.Elastic_Wrapper import insert_doc
 from ungi_cli.utils.Sqlite3_Utils import hash_, list_telegram
-from ungi_cli.utils.Config import config
+from ungi_cli.utils.Config import auto_load, UngiConfig
+from ungi_cli.utils.entity_utils import extract_ent, get_hashtags, fix_up
 import os
 import datetime
 from telethon import TelegramClient, events, sync, utils
@@ -71,12 +72,14 @@ async def doc_builder(message, client, chat_list):
 
         doc["date"] = aslocaltimestr(message.date)
         doc["m"] = message.raw_text
-
+        if doc["m"] is not None:
+            hashes = get_hashtags(message.raw_text)
+            if hashes:
+                doc["hashes"] = hashes
 
         for chat in chat_list:
             chan_id = chat["chan-id"]
             if abs(chat_data.id) == abs(chan_id):
-                print("op found!")
                 doc["operation-id"] = chat["op-id"]
 
 
@@ -89,11 +92,15 @@ async def get_messages(client, es_host, index, watch_list):
     """
     Used to grab all available messages
     """
+    text_list = []
     for chat in watch_list:
         try:
             async for message in client.iter_messages(chat["chan-id"]):
                 d = await doc_builder(message, client, watch_list)
-                print(d)
+                if d["m"]:
+                    clean = fix_up(d["m"])
+                    print(clean)
+                    text_list.append(clean)
                 await log_message(es_host, index, d)
                 if media_path:
                     try:
@@ -104,7 +111,8 @@ async def get_messages(client, es_host, index, watch_list):
                                 path = media_path + \
                                     str(aslocaltimestr(message.date)) + ".jpg"
                             if os.path.exists(path):
-                                print("Duplicate file: " + path)
+                                if q == False:
+                                    print("Duplicate file: " + path)
                             else:
                                 await client.download_media(message.media, path)
                     except AttributeError as e:
@@ -136,7 +144,9 @@ async def get_messages(client, es_host, index, watch_list):
                         await insert_doc(es_host, loot_index, web_loot, hash_id)
                 except AttributeError:
                     pass
-
+            ed = extract_ent(text_list)
+            for ent in ed:
+                print(ent)
         except ChannelPrivateError:
             print(f"{chat} is private")
 
@@ -153,40 +163,28 @@ async def main():
         help="Get complete Chat Histories",
         action="store_true")
     parser.add_argument("-s", "--show", help="Show channel id so you can add them to db", action='store_true')
+    parser.add_argument("-q", "--quiet", help="suppress output", action='store_true', default=False)
     args = parser.parse_args()
-
-    global config_file
-    # we try to load config setting then to env var
-    try:
-        config_file = args.config
-    except KeyError as no_env:
-        config_file = os.environ["UNGI_CONFIG"]
+    global q
+    q = args.quiet
 
     # config setup
-    # TODO create a class for this
-    telegram_index = config("INDEX", "telegram", config_file)
-    global loot_index
-    loot_index = config("INDEX", "loot", config_file)
-    api_id = config("TELEGRAM", "api_id", config_file)
-    api_hash = config("TELEGRAM", "api_hash", config_file)
-    api_session_file = config("TELEGRAM", "session_file", config_file)
-    database = config("DB", "path", config_file)
-    es_host = config("ES", "host", config_file)
-    global media_path
-    media_path = config("TELEGRAM", "media", config_file)
-    ocr_path = config("OCR", "path", config_file)
-    timezone = config("TIME", "timezone", config_file)
-    client = TelegramClient(api_session_file, api_id, api_hash)
 
+    CONFIG = UngiConfig(auto_load(args.config))
+    global loot_index
+    loot_index = CONFIG.loot
+    global media_path
+    media_path = CONFIG.telegram_media
+    client = TelegramClient(CONFIG.telegram_session , CONFIG.telegram_api_id, CONFIG.telegram_api_hash)
     global local_tz
-    local_tz = pytz.timezone(timezone)
+    local_tz = pytz.timezone(CONFIG.timezone)
     # We are retreiving the list of servers in the watch list
     watch_list = []
     chat_id_list = []
 
     async with client:
 
-        for chat in list_telegram(database):
+        for chat in list_telegram(CONFIG.db_path):
             chat_watch = {}
             real_id = utils.resolve_id(abs(chat[0]))[0]
             chat_watch["rid"] = real_id
@@ -221,14 +219,13 @@ async def main():
         if args.full:
 
             shuffle(channel_list)  # randomized
-            await get_messages(client, es_host, telegram_index, channel_list)
+            await get_messages(client, CONFIG.es_host, CONFIG.telegram, channel_list)
             print("done, waiting to avoid timeouts")
 
         @client.on(events.NewMessage(chats=chat_id_list))
         async def newMessage(event):
-            d = await doc_builder(event.message, client, watch_list)
-            print(d)
-            await log_message(es_host, telegram_index, d)
+            d = await doc_builder(event.message, cli/ent, watch_list)
+            await log_message(CONFIG.es_host, CONFIG.telegram, d)
             if media_path:
                 try:
                     if event.message.media.photo:
@@ -238,7 +235,8 @@ async def main():
                             path = media_path + \
                                 str(aslocaltimestr(message.date)) + ".jpg"
                             if os.path.exists(path):
-                                print("Duplicate file: " + path)
+                                if q == False:
+                                    print("Duplicate file: " + path)
                             else:
                                 await client.download_media(event.message.media, path)
                 except AttributeError as e:
@@ -266,7 +264,7 @@ async def main():
                     if web_loot["title"] is None:
                         web_loot["title"] = "None"
                     hash_id = hash_(web_loot["url"] + web_loot["title"] + web_loot["source"])
-                    await insert_doc(es_host, loot_index, web_loot, hash_id)
+                    await insert_doc(CONFIG.es_host, CONFIG.loot, web_loot, hash_id)
             except AttributeError:
                 pass
 

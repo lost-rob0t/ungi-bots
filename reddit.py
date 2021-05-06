@@ -2,9 +2,9 @@
 
 from os import environ
 import asyncpraw
-from ungi_cli.utils.Config import config
-from ungi_cli.utils.Elastic_Wrapper import insert_doc
-from ungi_cli.utils.Sqlite3_Utils import hash_
+from ungi_utils.Config import auto_load, UngiConfig
+from ungi_utils.Elastic_Wrapper import insert_doc
+from ungi_utils.Sqlite3_Utils import hash_
 import sqlite3
 import asyncio
 import datetime
@@ -17,16 +17,6 @@ conf_file = environ['UNGI_CONFIG']
 db_path = config("DB", "path", conf_file)
 es_host = config("ES", "host", conf_file)
 es_index = config("INDEX", "reddit", conf_file)
-
-# Setting up the reddit instance
-
-reddit = asyncpraw.Reddit(
-    client_id=config("REDDIT", "client_id", conf_file),
-    client_secret=config("REDDIT", "client_secret", conf_file),
-    username=config("REDDIT", "username", conf_file),
-    password=config("REDDIT", "password", conf_file),
-    user_agent=config("REDDIT", "user_agent", conf_file)
-)
 
 # Used to return all the subreddits with their operation id
 
@@ -119,29 +109,15 @@ def main():
     args = parser.parse_args()
 
 
-    # try and loadn environ.
-    # If it fails loads --config flag
-
-    try:
-        conf_file = environ['UNGI_CONFIG']
-        db_path = config("DB", "path", conf_file)
-        es_host = config("ES", "host", conf_file)
-        es_index = config("INDEX", "reddit", conf_file)
-    except KeyError as no_env:
-        conf_file = args.config
-        db_path = config("DB", "path", conf_file)
-        es_host = config("ES", "host", conf_file)
-        es_index = config("INDEX", "reddit", conf_file)
-
+    CONFIG = UngiConfig(auto_load(args.config))
     # Setting up the reddit instance
 
     reddit = asyncpraw.Reddit(
-        client_id=config("REDDIT", "client_id", conf_file),
-        client_secret=config("REDDIT", "client_secret", conf_file),
-        username=config("REDDIT", "username", conf_file),
-        password=config("REDDIT", "password", conf_file),
-        user_agent=config("REDDIT", "user_agent", conf_file)
-    )
+        client_id=CONFIG.reddit_client_id,
+        client_secret=CONFIG.reddit_client_secret,
+        username=CONFIG.reddit_client_username,
+        password=CONFIG.reddit_client_password,
+        user_agent=CONFIG.reddit_client_user_agent)
 
 
     if args.full:
