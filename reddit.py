@@ -13,11 +13,6 @@ from random import shuffle  # used for randomizing the subreddit list
 # config setup
 
 
-conf_file = environ['UNGI_CONFIG']
-db_path = config("DB", "path", conf_file)
-es_host = config("ES", "host", conf_file)
-es_index = config("INDEX", "reddit", conf_file)
-
 # Used to return all the subreddits with their operation id
 
 
@@ -28,7 +23,7 @@ def list_subreddits(path):
     return data.fetchall()
 
 
-async def insert_es(data, data_type=None):
+async def insert_es(es_host, es_index, data, data_type=None):
     if data_type == "comment":
         hash_id = hash_(str(data["body"]) +
                            str(data["date"]) +
@@ -41,7 +36,7 @@ async def insert_es(data, data_type=None):
     await insert_doc(es_host, es_index, data, hash_id)
 
 
-async def scrape(reddit_obj, limit):
+async def scrape(reddit_obj, db_path, es_host, es_index, limit):
     subs = list_subreddits(db_path)
     shuffle(subs)
     for sub in subs:
@@ -63,7 +58,7 @@ async def scrape(reddit_obj, limit):
                     submission.created_utc).isoformat())
             rd["subreddit"] = str(submission.subreddit)
             rd["operation-id"] = operation_id
-            await insert_es(rd, "post")
+            await insert_es(es_host, es_index, rd, "post")
 
             # I got this code snippet from the asyncpraw docs
             # It should produce all comments from a submission
@@ -83,7 +78,7 @@ async def scrape(reddit_obj, limit):
                 comment_dict["parent"] = str(comment.parent_id)
                 comment_dict["id"] = str(comment.id)
                 comment_dict["operation-id"] = operation_id
-                await insert_es(comment_dict, "comment")
+                await insert_es(es_host, es_index, comment_dict, "comment")
                 comment_queue.extend(comment.replies)
 
     await reddit_obj.close()
@@ -122,11 +117,12 @@ def main():
 
     if args.full:
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(scrape(reddit, None))
+        loop.run_until_complete(scrape(reddit, CONFIG.db_path, CONFIG.es_host, CONFIG.reddit, None))
+        loop.run_until_complete(reddit.close())
     else:
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(scrape(reddit, args.limit))
-
+        loop.run_until_complete(scrape(reddit, CONFIG.db_path, CONFIG.es_host, CONFIG.reddit, args.limit))
+        loop.run_until_complete(reddit.close())
 
 if __name__ == "__main__":
     main()
