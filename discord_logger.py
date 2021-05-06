@@ -5,9 +5,9 @@ import discord
 import datetime
 import asyncio
 import json
-from ungi_cli.utils.Elastic_Wrapper import insert_doc
-from ungi_cli.utils.Config import config
-from ungi_cli.utils.Sqlite3_Utils import list_servers, hash_  # For setting operation
+from ungi_utils.Elastic_Wrapper import insert_doc
+from ungi_utils.Config import config
+from ungi_utils.Sqlite3_Utils import list_servers, hash_  # For setting operation
 from os import environ
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--token", help="Logs in with this token")
