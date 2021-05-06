@@ -92,7 +92,6 @@ async def get_messages(client, es_host, index, watch_list):
     """
     Used to grab all available messages
     """
-    text_list = []
     for chat in watch_list:
         try:
             async for message in client.iter_messages(chat["chan-id"]):
@@ -144,9 +143,6 @@ async def get_messages(client, es_host, index, watch_list):
                         await insert_doc(es_host, loot_index, web_loot, hash_id)
                 except AttributeError:
                     pass
-            ed = extract_ent(text_list)
-            for ent in ed:
-                print(ent)
         except ChannelPrivateError:
             print(f"{chat} is private")
 
@@ -166,17 +162,19 @@ async def main():
     parser.add_argument("-q", "--quiet", help="suppress output", action='store_true', default=False)
     args = parser.parse_args()
     global q
+    global loot_index
+    global local_tz
+    global media_path
+    global store_media
     q = args.quiet
 
     # config setup
 
     CONFIG = UngiConfig(auto_load(args.config))
-    global loot_index
     loot_index = CONFIG.loot
-    global media_path
+    store_media = bool(CONFIG.telegram_store_media)
     media_path = CONFIG.telegram_media
     client = TelegramClient(CONFIG.telegram_session , CONFIG.telegram_api_id, CONFIG.telegram_api_hash)
-    global local_tz
     local_tz = pytz.timezone(CONFIG.timezone)
     # We are retreiving the list of servers in the watch list
     watch_list = []
