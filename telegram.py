@@ -97,10 +97,7 @@ async def get_messages(client, es_host, index, watch_list):
             async for message in client.iter_messages(chat["chan-id"]):
                 d = await doc_builder(message, client, watch_list)
                 if d["m"]:
-                    clean = fix_up(d["m"])
-                    print(clean)
-                    text_list.append(clean)
-                await log_message(es_host, index, d)
+                    await log_message(es_host, index, d)
                 if media_path:
                     try:
                         if message.media.photo:
