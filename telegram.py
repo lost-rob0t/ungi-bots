@@ -98,7 +98,7 @@ async def get_messages(client, es_host, index, watch_list):
                 d = await doc_builder(message, client, watch_list)
                 if d["m"]:
                     await log_message(es_host, index, d)
-                if media_path:
+                if store_media:
                     try:
                         if message.media.photo:
                             try:
@@ -221,7 +221,7 @@ async def main():
         async def newMessage(event):
             d = await doc_builder(event.message, cli/ent, watch_list)
             await log_message(CONFIG.es_host, CONFIG.telegram, d)
-            if media_path:
+            if store_media:
                 try:
                     if event.message.media.photo:
                         try:
