@@ -69,7 +69,7 @@ CREATE TABLE "telegram" (
 CREATE TABLE "twitter" (
 	"twitter_uid"	INTEGER NOT NULL,
 	"username"	TEXT NOT NULL UNIQUE,
-	"operation-id"	INTEGER NOT NULL,
+	"operation_id"	INTEGER NOT NULL,
 	"source"	TEXT DEFAULT "user",
 	FOREIGN KEY("operation-id") REFERENCES "operations"("operation_id") ON DELETE CASCADE,
 	PRIMARY KEY("twitter_uid")
