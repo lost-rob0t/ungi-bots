@@ -19,7 +19,8 @@ from  ungi_utils.Sqlite3_Utils import (
     list_telegram,
     list_subreddits,
     add_twitter,
-    move_twitter
+    move_twitter,
+    list_twitter
     )
 
 from ungi_utils.Config import config
@@ -153,6 +154,7 @@ class OperationsManager(cmd2.Cmd):
     list_parser.add_argument("-d", help="Show Discord Servers", action="store_true")
     list_parser.add_argument("-o", help="Show ops", action="store_true")
     list_parser.add_argument("-t", help="telgram", action="store_true")
+    list_parser.add_argument("-T", help="twitter", action="store_true")
     @cmd2.with_argparser(list_parser)
     def do_list(self, args):
 
@@ -209,6 +211,18 @@ class OperationsManager(cmd2.Cmd):
             #Building the data that gos into the table
             for server in servers:
                 list_view.append([server[0], server[1], get_op_name(self.database_path, server[2])[0]])
+            bt = BorderedTable(columns)
+            table = bt.generate_table(list_view)
+            ansi_print(table)
+
+        if args.T:
+            columns = create_list_table("source")
+            users = list_twitter(self.database_path)
+
+            list_view: List[Any] = list()
+
+            for user in users:
+                list_view.append([user[0], get_op_name(self.database_path, user[1])[0]])
             bt = BorderedTable(columns)
             table = bt.generate_table(list_view)
             ansi_print(table)
