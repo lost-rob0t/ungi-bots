@@ -20,7 +20,8 @@ from  ungi_utils.Sqlite3_Utils import (
     list_subreddits,
     add_twitter,
     move_twitter,
-    list_twitter
+    list_twitter,
+    log_user
     )
 
 from ungi_utils.Config import config
@@ -252,6 +253,7 @@ class OperationsManager(cmd2.Cmd):
 
             if args.T:
                 add_twitter(self.database_path, args.input, args.Id)
+                log_user(self.database_path, args.input, "ungi", "twitter.com", args.Id)
         else:
             print("canceled")
 
@@ -317,7 +319,7 @@ class OperationsManager(cmd2.Cmd):
                 with open(args.input, "r") as input_file:
                     for line in input_file:
                         add_twitter(self.database_path, line.rstrip(), args.Id)
-
+                        log_user(self.database_path, line.rstrip(), "ungi", "twitter.com", args.Id)
 
         if prompt == "NO" or "no":
             print("canceled")
