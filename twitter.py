@@ -46,19 +46,11 @@ def get_users(target_list, index, es_host):
         c = twint.Config
         c.Username = username
         c.Pandas = True
-        c.Hide_output = q
+        c.Hide_output = verbose
         twint.run.Lookup(c)
         info = twint.storage.panda.User_df
         d = doc_build("info", info, target["operation-id"])
         asyncio.run(insert_doc(es_host, index, d, d["id"]))
-
-def get_user(username, index, es_host, operation_id):
-    c = twint.Config
-    c.Username = username
-    c.Pandas = True
-    twint.run.Lookup(c)
-    info = twint.storage.panda.User_df
-    d = doc_build("info", info, operation_id)
 
 def get_timeline(target_list, es_host, index, limit):
     for target in target_list:
@@ -66,16 +58,21 @@ def get_timeline(target_list, es_host, index, limit):
         c = twint.Config()
         c.Username = target["username"]
         c.Limit = limit
-        c.Hide_output = q
+        c.Hide_output = v
         c.Pandas = True
-        #c.Store_object = True
-        #c.Store_object_tweets_list = t
-        #c.Store_object_tweets_list = True
-        twint.run.Profile(c)
+        c.Retries_count = 3
+        c.Pandas_au = True
+        c.Pandas_clean = True
+        twint.run.Search(c)
+        data = twint.storage.panda.Tweets_df
+        d_list = []
+
         data = twint.storage.panda.Tweets_df
         for tweet_data in data.itertuples():
             d = doc_build("tweet", tweet_data, target["operation-id"])
-            asyncio.run(insert_doc(es_host, index, d, d["id"]))
+            d_list.append(d)
+        for doc in d_list:
+            asyncio.run(insert_doc(es_host, index, doc, doc["id"]))
 def doc_build(d_type, panda_in, operation_id):
     """
     function used to build docs.
@@ -83,6 +80,8 @@ def doc_build(d_type, panda_in, operation_id):
     d_type (type of input)
     panda_in is the data input
     """
+
+    # If theis is an acount info pandas
     if d_type == "info":
         doc = {}
         doc["operation-id"] = operation_id
@@ -95,9 +94,9 @@ def doc_build(d_type, panda_in, operation_id):
         doc["verified"] = str(panda_in.verified[0])
         doc["avatar"] = panda_in.avatar[0]
         doc["id"] = hash_(doc["name"] + doc["bio-url"] + doc["username"] + doc["bio"] + doc["avatar"])
-        #doc["backround"] = panda_in["backround_image"]
 
         return doc
+    # if this is a tweet pandas
     else:
         doc = {}
         doc["operation-id"] = operation_id
@@ -112,27 +111,23 @@ def doc_build(d_type, panda_in, operation_id):
         doc["username"] = panda_in.username
         doc["name"] = panda_in.name
         doc["m"] = panda_in.tweet
-        #doc["convo"] =
         d = datetime.datetime.strptime(panda_in.date, "%Y-%m-%d %H:%M:%S").isoformat()
         doc["date"] = str(d)
         doc["id"] = hash_(doc["username"] + doc["date"] + doc["m"])
         return doc
 
 
-#get_user_info(get_twitters("/home/user/git/ungi/db/snake.db"))
-#get_timeline(get_twitters("/home/user/git/ungi/db/snake.db"), "kek", "kek", "kek")
-
 def main():
-    global q
+    global verbose
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--full", help="Grab everything")
     parser.add_argument("-c", "--config", help="path to config")
     parser.add_argument("-s", "--show", help="Show Targets")
     parser.add_argument("-l", "--limit", help="Max tweets to pull", default=25)
     parser.add_argument("-u", "--update", help="update user profile info")
-    parser.add_argument("-q", default="True", action="store_false")
+    parser.add_argument("-v", "--verbose", default="True", action="store_false")
     args = parser.parse_args()
-    q = args.q
+    verbose = args.verbose
     global local_tz
     CONFIG = UngiConfig(auto_load(args.config))
     local_tz = CONFIG.timezone
