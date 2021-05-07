@@ -3,7 +3,7 @@
 import argparse
 import json
 import cmd2
-from  utils.Sqlite3_Utils import (
+from  ungi_utils.Sqlite3_Utils import (
     delete_operation,
     add_discord,
     add_watch_word,
@@ -17,10 +17,12 @@ from  utils.Sqlite3_Utils import (
     list_ops,
     list_servers,
     list_telegram,
-    list_subreddits
+    list_subreddits,
+    add_twitter,
+    move_twitter
     )
 
-from utils.Config import config
+from ungi_utils.Config import config
 from os import environ
 import functools
 import sys
@@ -40,7 +42,6 @@ from cmd2.table_creator import (
 
 
 # TODO make it pep8
-# TODO make all listings use the creat list table function
 
 
 def ansi_print(text):
@@ -219,30 +220,26 @@ class OperationsManager(cmd2.Cmd):
     add_parser.add_argument("-r", help="Reddit", action="store_true")
     add_parser.add_argument("-Id", help="Operation id")
     add_parser.add_argument("input", help="input")
-    add_parser.add_argument("-t", help="add a tallegram link")
+    add_parser.add_argument("-t", help="add a telegram link", action="store_true")
+    add_parser.add_argument("-T", help="add a twitter user", action="store_true")
     @cmd2.with_argparser(add_parser)
     def do_add(self, args):
-        if args.d:
-            print(f"adding {args.i}")
-            choice = input("is this ok? (y/n): ")
-            if choice == "y":
+        print(f"adding {args.input}")
+        choice = input("is this ok? (y/n): ")
+        if choice.lower() == "y" or choice == "yes":
+            if args.d:
                 add_discord(self.database_path, args.input, args.Id)
-            else:
-                print("Canceled")
 
-        if args.r:
-            print(f"adding {args.input}")
-            choice = input("is this ok? (y/n): ")
-            if choice == "y":
+            if args.r:
                 add_subreddit(self.database_path, args.input, args.Id)
-            else:
-                print("Canceled")
 
-        if args.t:
-            print(f"adding {args.input}")
-            choice = input("Is this ok? (y/n): ")
-            if choice == "y":
+            if args.t:
                 add_telegram(self.database_path, args.input, args.Id)
+
+            if args.T:
+                add_twitter(self.database_path, args.input, args.Id)
+        else:
+            print("canceled")
 
     target_parser = argparse.ArgumentParser()
     target_parser.add_argument("u", help="username")
@@ -272,6 +269,7 @@ class OperationsManager(cmd2.Cmd):
     bulk_parser.add_argument("-d", help="add discord servers in bulk", action="store_true")
     bulk_parser.add_argument("-r", help="add subreddits in bulk", action="store_true")
     bulk_parser.add_argument("-t", help="add telegram in bulk", action="store_true")
+    bulk_parser.add_argument("-T", help="add twitter users in bulk", action="store_true")
     @cmd2.with_argparser(bulk_parser)
     def do_bulk(self, args):
         columns = create_list_table("source")
@@ -283,7 +281,7 @@ class OperationsManager(cmd2.Cmd):
         table = bt.generate_table(data_list)
         ansi_print(table)
         prompt = input("Is this ok?\n(YES/NO)")
-        if prompt == "YES" or "yes":
+        if prompt == "YES" or prompt == "yes":
             if args.d:
                 with open(args.input, "r") as input_file:
                     for line in input_file:
@@ -300,6 +298,12 @@ class OperationsManager(cmd2.Cmd):
                         except ValueError:
                             name = input(f"Name for {chan_id}?: ")
                         add_telegram(self.database_path, chan_id, args.Id, name)
+
+            if args.T:
+                with open(args.input, "r") as input_file:
+                    for line in input_file:
+                        add_twitter(self.database_path, line.rstrip(), args.Id)
+
 
         if prompt == "NO" or "no":
             print("canceled")
