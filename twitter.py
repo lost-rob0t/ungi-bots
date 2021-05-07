@@ -58,7 +58,7 @@ def get_timeline(target_list, es_host, index, limit):
         c = twint.Config()
         c.Username = target["username"]
         c.Limit = limit
-        c.Hide_output = v
+        c.Hide_output = verbose
         c.Pandas = True
         c.Retries_count = 3
         c.Pandas_au = True
@@ -120,11 +120,11 @@ def doc_build(d_type, panda_in, operation_id):
 def main():
     global verbose
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--full", help="Grab everything")
+    parser.add_argument("-f", "--full", help="Grab everything", action="store_true")
     parser.add_argument("-c", "--config", help="path to config")
-    parser.add_argument("-s", "--show", help="Show Targets")
+    parser.add_argument("-s", "--show", help="Show Targets", action="store_true")
     parser.add_argument("-l", "--limit", help="Max tweets to pull", default=25)
-    parser.add_argument("-u", "--update", help="update user profile info")
+    parser.add_argument("-u", "--update", help="update user profile info", action="store_true")
     parser.add_argument("-v", "--verbose", default="True", action="store_false")
     args = parser.parse_args()
     verbose = args.verbose
@@ -138,6 +138,7 @@ def main():
         print(f"watching {t} users....")
         for target in targets:
             print(target["username"])
+
     if args.full:
         get_users(targets, CONFIG.twitter, CONFIG.es_host)
         get_timeline(targets, CONFIG.es_host, CONFIG.twitter, args.limit)
