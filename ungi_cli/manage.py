@@ -156,7 +156,7 @@ class OperationsManager(cmd2.Cmd):
     list_parser.add_argument("-t", help="telgram", action="store_true")
     list_parser.add_argument("-T", help="twitter", action="store_true")
     @cmd2.with_argparser(list_parser)
-    def do_list(self, args):
+    def do_ls(self, args):
 
         # If -o is used, we list operations
 
