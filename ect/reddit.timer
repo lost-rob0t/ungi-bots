@@ -1,0 +1,12 @@
+# Reddit bot timer
+# Written by: Unseen Giants
+
+[Unit]
+Description=reddit.service
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+
+[Install]
+WantedBy=timers.target

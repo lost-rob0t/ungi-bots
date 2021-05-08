@@ -52,8 +52,11 @@ async def log_message(es_host, index, input_dict):
 async def doc_builder(message, client, chat_list):
     doc = {}
     if message:
-        sender_data = await message.get_sender()
-        chat_data = await message.get_chat()
+        try:
+            sender_data = await message.get_sender()
+            chat_data = await message.get_chat()
+        except AttributeError:
+            pass #not sure what causes this?
         doc["group"] = chat_data.title
 
         try:
@@ -98,9 +101,10 @@ async def get_messages(client, es_host, index, watch_list):
                 d = await doc_builder(message, client, watch_list)
                 if d["m"]:
                     await log_message(es_host, index, d)
-                if store_media:
-                    try:
-                        if message.media.photo:
+
+                try:
+                    if message.media.photo:
+                        if store_media:
                             try:
                                 path = media_path + str(aslocaltimestr(message.date)) + f"_{d['group']}.jpg"
                             except KeyError:
@@ -111,9 +115,8 @@ async def get_messages(client, es_host, index, watch_list):
                                     print("Duplicate file: " + path)
                             else:
                                 await client.download_media(message.media, path)
-                    except AttributeError as e:
-                        pass  # bad yes, but no error spam.
-
+                except AttributeError:
+                    pass #no error spam
 
                 try:
                     if message.media.webpage:
@@ -168,6 +171,7 @@ async def main():
     # config setup
 
     CONFIG = UngiConfig(auto_load(args.config))
+    print(CONFIG.config_path)
     loot_index = CONFIG.loot
     store_media = bool(CONFIG.telegram_store_media)
     media_path = CONFIG.telegram_media
@@ -221,21 +225,22 @@ async def main():
         async def newMessage(event):
             d = await doc_builder(event.message, cli/ent, watch_list)
             await log_message(CONFIG.es_host, CONFIG.telegram, d)
-            if store_media:
-                try:
-                    if event.message.media.photo:
+
+            try:
+                if message.media.photo:
+                    if store_media:
                         try:
                             path = media_path + str(aslocaltimestr(message.date)) + f"_{d['group']}.jpg"
                         except KeyError:
                             path = media_path + \
                                 str(aslocaltimestr(message.date)) + ".jpg"
-                            if os.path.exists(path):
-                                if q == False:
-                                    print("Duplicate file: " + path)
+                        if os.path.exists(path):
+                            if q == False:
+                                print("Duplicate file: " + path)
                             else:
-                                await client.download_media(event.message.media, path)
-                except AttributeError as e:
-                    pass  # bad yes, but no error spam
+                                await client.download_media(message.media, path)
+            except AttributeError:
+                pass #no error spam
 
             try:
                 if event.message.media.webpage:

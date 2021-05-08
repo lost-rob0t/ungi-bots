@@ -1,0 +1,16 @@
+# This service unit for starting the twitter bot
+# By Unseen Giants
+# Licensed under GPL V3
+#
+# How to install
+# sudo cp twitter.service twitter.timer /etc/systemd/system/
+# sudo systemctl enable twitter.timer && sudo systemctl start twitter.service.timer
+
+
+[Unit]
+Description=twitter.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/twitter.py -c /etc/ungi/app.ini
+WorkingDirectory=/path/to/install

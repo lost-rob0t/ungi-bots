@@ -1,0 +1,16 @@
+# This service unit for starting the reddit bot
+# By Unseen Giants
+# Licensed under GPL V3
+#
+# How to install
+# sudo cp reddit.service reddit.timer /etc/systemd/system/
+# sudo systemctl enable reddit.timer && sudo systemctl start reddit.timer
+
+
+[Unit]
+Description=UNGI reddit bot
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/reddit.py -c /etc/ungi/app.ini --limit 25
+WorkingDirectory=/path/to/install

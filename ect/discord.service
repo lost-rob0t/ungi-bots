@@ -1,0 +1,24 @@
+# This service unit for starting the discord bot
+# By Unseen Giants
+# Licensed under GPL V3
+#
+# How to install
+# sudo cp discord.service /etc/systemd/system/
+#
+# sudo systemctl enable discord.service --now
+
+
+[Unit]
+Description=UNGI discord bot
+After=elasticsearch.service
+StartLimitIntervalSec=5
+Type=simple
+Restart=always
+RestartSec=10
+User=user
+
+# note if you are running many bots change this to the shellscript and supply the token file
+ExecStart=/usr/local/bin/discord_logger.py -t <token> -m 2000 -c /etc/ungi/app.ini
+
+[Install]
+WantedBy=multi-user.target

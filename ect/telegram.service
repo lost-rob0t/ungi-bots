@@ -1,0 +1,24 @@
+# This service unit for startingthe t bot
+# By Unseen Giants
+# Licensed under GPL V3
+#
+# How to install
+# sudo systemctl enable telegram.service --now
+#
+# To check the current 
+
+
+[Unit]
+Description=UNGI telegram bot
+After=elasticsearch.service
+StartLimitIntervalSec=5
+Type=simple
+Restart=always
+RestartSec=10
+User=user
+
+# note if you are running many bots change this to the shellscript and supply the token file
+ExecStart=/usr/local/bin/telegram.py  -c /etc/ungi/app.ini
+
+[Install]
+WantedBy=multi-user.target
