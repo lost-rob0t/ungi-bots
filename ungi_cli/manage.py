@@ -301,23 +301,65 @@ class OperationsManager(cmd2.Cmd):
     target_parser.add_argument("u", help="username")
     target_parser.add_argument("-r", help="remove user from target list", action="store_true")
     target_parser.add_argument("-a", help="add user to target list", action="store_true")
+    target_parser.add_argument("-b", help="bulk target add.", action="store_true")
     @cmd2.with_argparser(target_parser)
     def do_target(self, args):
         if args.a:
-            print(args.u)
-            prompt = input("Are you sure you want to add this user to the target list?\n(y/n): ")
-            if prompt == "y":
-                update_target(self.database_path, args.u, 1)
+            if args.b:
+                columns = create_list_table("source")
+                list_view: List[Any] = list()
+                targets = []
+                with open(args.u, "r") as input_file:
+                    for line in input_file:
+                        targets.append(line.rstrip())
+                        list_view.append([line.rstrip(), "Add to targets"])
+
+                bt = BorderedTable(columns)
+                table = bt.generate_table(list_view)
+                ansi_print(table)
+                prompt = input("Are you sure you want to add this list to the target list?\n(YES/NO): ")
+                if prompt == "YES":
+
+                    for target in targets:
+                        update_target(self.database_path, target, 1)
+                else:
+                    print("Canceled")
             else:
-                print("canceled")
+                print(args.u)
+                prompt = input("Are you sure you want to add this user to the target list?\n(y/n): ")
+                if prompt == "y":
+                    update_target(self.database_path, args.u, 1)
+                else:
+                    print("canceled")
 
         else:
-            print(args.u)
-            prompt = input("Are you sure you want to remove this user from the target list?\n(y/n): ")
-            if prompt == "y":
-                update_target(self.database_path, args.u, 0)
+
+            if args.b:
+                columns = create_list_table("source")
+                list_view: List[Any] = list()
+                targets = []
+                with open(args.u, "r") as input_file:
+                    for line in input_file:
+                        targets.append(line.rstrip())
+                        list_view.append([line.rstrip(), "Add to targets"])
+
+                bt = BorderedTable(columns)
+                table = bt.generate_table(list_view)
+                ansi_print(table)
+                prompt = input("Are you sure you want to add this list to the target list?\n(YES/NO): ")
+                if prompt == "YES":
+
+                    for target in targets:
+                        update_target(self.database_path, target, 1)
+                else:
+                    print("Canceled")
             else:
-                print("canceled")
+                print(args.u)
+                prompt = input("Are you sure you want to remove this use from the target list?\n(y/n): ")
+                if prompt == "y":
+                    update_target(self.database_path, args.u, 0)
+                else:
+                    print("canceled")
 
     bulk_parser = argparse.ArgumentParser()
     bulk_parser.add_argument("input", help="Path to input File")
