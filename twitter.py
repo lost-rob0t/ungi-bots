@@ -14,7 +14,7 @@ import os
 import typing
 import concurrent.futures
 import itertools
-
+from random import shuffle
 
 def chunked(list_in, size):
     """
@@ -82,6 +82,7 @@ def get_timeline(target_list, es_host, index, limit):
         c.Limit = limit
         c.Hide_output = verbose
         c.Pandas = True
+        c.Min_wait_time = 3
         c.Retries_count = 3
         c.Pandas_au = True
         c.Pandas_clean = True
@@ -153,19 +154,28 @@ def main():
     parser.add_argument("-l", "--limit", help="Max tweets to pull", default=25)
     parser.add_argument("-u", "--update", help="update user profile info", action="store_true")
     parser.add_argument("-v", "--verbose", default="True", action="store_false")
-    parser.add_argument("-m", "--max", default=3)
+    parser.add_argument("-T", "--threads", help="max amount of threads", default=3)
+    parser.add_argument("-C", "--chunk", default=3)
     args = parser.parse_args()
     verbose = args.verbose
     global local_tz
     CONFIG = UngiConfig(auto_load(args.config))
     local_tz = CONFIG.timezone
-    data = chunked(get_twitters(CONFIG.db_path), 2)
+
     users = get_twitters(CONFIG.db_path)
+    shuffle(users) #ban evasion
+    data = chunked(users, int(args.chunk))
     if args.show:
         t = len(users)
         print(f"watching {t} users....")
         for user in users:
             print(user["username"])
-    with concurrent.futures.ThreadPoolExecutor(max_workers=int(args.max)) as executor:
-        twitter_bots = {executor.submit(update, chunk, CONFIG.twitter, CONFIG.es_host, args.limit): chunk for chunk in data}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=int(args.threads)) as executor:
+        twitter_bots = {executor.submit(update, chunk, CONFIG.twitter,
+                                        CONFIG.es_host,
+                                        args.limit): chunk for chunk in data}
+        i = 1
+        for future in concurrent.futures.as_completed(twitter_bots):
+            print(f"bot {i} done")
+            i += 1
 main()
