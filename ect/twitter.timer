@@ -1,0 +1,14 @@
+# Timer unit for twitter.service
+# By Unseen Giants
+# Licensed under GPL V3
+# 2021
+
+[Unit]
+Description=twitter.service
+
+[Timer]
+OnCalendar=*:0/30
+Persistent=true
+
+[Install]
+WantedBy=timers.target

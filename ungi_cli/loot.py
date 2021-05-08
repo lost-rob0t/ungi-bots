@@ -9,19 +9,38 @@ import argparse
 import re
 import elasticsearch
 from elasticsearch.helpers import scan
-from utils.File_utils import write_csv, write_json
+from ungi_utils.File_utils import write_csv, write_json
 
-from utils.Elastic_Wrapper import (
+from ungi_utils.Elastic_Wrapper import (
     search
 )
-from utils.Sqlite3_Utils import log_user, hash_
+from ungi_utils.Sqlite3_Utils import log_user, hash_
 from cmd2.table_creator import (
     BorderedTable,
     Column,
     HorizontalAlignment,
 )
 
+banner = """
+                ___________)%%%%%%%%%/
+               /%%%%%%%%%%/%{}%%%%%%/
+              /{}%%%%%%%%/%%/%%%%%%/
+             /%%\% _---_/ \/%%%%%%/
+            /%%%%\/    /()|%%%%%%/
+           /%%%%%|()  /+ /%%%%%%/
+          /%%%%%%%\ +/HH%%\%%%%/
+         /%%%%%%%/%HH/_/%%%\%%/
+ejm97   /%%%%%%%/%%\/%%%%%%{}/
+       /%%%%%%{}%%%/%%%%%%%%/
+      /%%%%%%%%%%%/
+     /
+    /
+   /
+  /
 
+
+
+"""
 
 user_fields = ["ut", "author", "op"]
 content_list = ["m", "body", "text", "title"]
