@@ -21,7 +21,8 @@ from  ungi_utils.Sqlite3_Utils import (
     add_twitter,
     move_twitter,
     list_twitter,
-    log_user
+    log_user,
+    list_targets
     )
 
 from ungi_utils.Config import config
@@ -97,6 +98,20 @@ def create_list_table(content_type):
                               header_horiz_align=HorizontalAlignment.CENTER,
                               data_horiz_align=HorizontalAlignment.CENTER))
 
+    if content_type == "user":
+        """
+        used to build the user table
+        """
+
+        columns.append(Column("Username", width=20,
+                              header_horiz_align=HorizontalAlignment.CENTER,
+                              data_horiz_align=HorizontalAlignment.CENTER))
+        columns.append(Column("Source", width=30,
+                              header_horiz_align=HorizontalAlignment.CENTER,
+                              data_horiz_align=HorizontalAlignment.CENTER))
+        columns.append(Column("Operation", width=24,
+                              header_horiz_align=HorizontalAlignment.CENTER,
+                              data_horiz_align=HorizontalAlignment.CENTER))
 
 
     return columns
@@ -156,6 +171,8 @@ class OperationsManager(cmd2.Cmd):
     list_parser.add_argument("-o", help="Show ops", action="store_true")
     list_parser.add_argument("-t", help="telgram", action="store_true")
     list_parser.add_argument("-T", help="twitter", action="store_true")
+    list_parser.add_argument("-x", help="list targets", action="store_true")
+
     @cmd2.with_argparser(list_parser)
     def do_ls(self, args):
 
@@ -173,6 +190,8 @@ class OperationsManager(cmd2.Cmd):
 
             bt = BorderedTable(columns)
             table = bt.generate_table(data_list)
+
+            print("Current Operations")
             ansi_print(table)
 
         if args.r:
@@ -186,6 +205,8 @@ class OperationsManager(cmd2.Cmd):
 
             bt = BorderedTable(columns)
             table = bt.generate_table(list_view)
+
+            print("Subreddits")
             ansi_print(table)
 
         if args.d:
@@ -200,6 +221,8 @@ class OperationsManager(cmd2.Cmd):
                 list_view.append([server[1], get_op_name(self.database_path, server[2])[0]])
             bt = BorderedTable(columns)
             table = bt.generate_table(list_view)
+
+            print("Discord servers")
             ansi_print(table)
 
         if args.t:
@@ -214,6 +237,8 @@ class OperationsManager(cmd2.Cmd):
                 list_view.append([server[0], server[1], get_op_name(self.database_path, server[2])[0]])
             bt = BorderedTable(columns)
             table = bt.generate_table(list_view)
+
+            print("Telegram chats")
             ansi_print(table)
 
         if args.T:
@@ -225,8 +250,23 @@ class OperationsManager(cmd2.Cmd):
             for user in users:
                 list_view.append([user[0], get_op_name(self.database_path, user[1])[0]])
             bt = BorderedTable(columns)
+
+            print("Current targets")
             table = bt.generate_table(list_view)
             ansi_print(table)
+
+        if args.x:
+            columns = create_list_table("user")
+            targets = list_targets(self.database_path)
+            list_view: List[List[Any]] = list()
+            for target in targets:
+                list_view.append([target[0], target[1], get_op_name(self.database_path, target[2])[0]])
+
+            bt = BorderedTable(columns)
+            table = bt.generate_table(list_view)
+            print("Showing listing for targets.")
+            ansi_print(table)
+
 
 
     # Setting up add parser
