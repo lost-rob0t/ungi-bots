@@ -12,15 +12,36 @@ import pytz
 import datetime
 import os
 import typing
-
-def utc_to_local(utc_dt):
-    local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(local_tz)
-    return local_tz.normalize(local_dt)  # .normalize might be unnecessary
+import concurrent.futures
+import itertools
 
 
-# We return date as iso format
-def aslocaltimestr(utc_dt):
-    return utc_to_local(utc_dt).isoformat()
+def chunked(list_in, size):
+    """
+    function used to split up list to give to multithreader
+    TODO Move this to ungi_utils pkg
+    Inputs:
+    list_in: (list_in)
+    size: size of each chunk (int)
+    NOTE if the list legnth is indivisble by chunk then the last chunk
+    will be smaller than chunk size
+    """
+
+    # adapted from:
+    # https://stackoverflow.com/questions/8991506/iterate-an-iterator-by-chunks-of-n-in-python
+    """Generate sequences of `chunk_size` elements from `iterable`."""
+    iterable = iter(list_in)
+    while True:
+        chunk = []
+        try:
+            for _ in range(size):
+                chunk.append(next(iterable))
+            yield chunk
+        except StopIteration:
+            if chunk:
+                yield chunk
+            break
+
 
 def get_twitters(path):
     data = list_twitter(path)
@@ -51,6 +72,7 @@ def get_users(target_list, index, es_host):
         info = twint.storage.panda.User_df
         d = doc_build("info", info, target["operation-id"])
         asyncio.run(insert_doc(es_host, index, d, d["id"]))
+
 
 def get_timeline(target_list, es_host, index, limit):
     for target in target_list:
@@ -117,6 +139,11 @@ def doc_build(d_type, panda_in, operation_id):
         return doc
 
 
+def update(list_in, index, es_host, limit):
+
+    get_users(list_in, index, es_host)
+    get_timeline(list_in, es_host, index, limit)
+
 def main():
     global verbose
     parser = argparse.ArgumentParser()
@@ -126,24 +153,19 @@ def main():
     parser.add_argument("-l", "--limit", help="Max tweets to pull", default=25)
     parser.add_argument("-u", "--update", help="update user profile info", action="store_true")
     parser.add_argument("-v", "--verbose", default="True", action="store_false")
+    parser.add_argument("-m", "--max", default=3)
     args = parser.parse_args()
     verbose = args.verbose
     global local_tz
     CONFIG = UngiConfig(auto_load(args.config))
     local_tz = CONFIG.timezone
-    targets = get_twitters(CONFIG.db_path)
-
+    data = chunked(get_twitters(CONFIG.db_path), 2)
+    users = get_twitters(CONFIG.db_path)
     if args.show:
-        t = len(targets)
+        t = len(users)
         print(f"watching {t} users....")
-        for target in targets:
-            print(target["username"])
-
-    if args.full:
-        get_users(targets, CONFIG.twitter, CONFIG.es_host)
-        get_timeline(targets, CONFIG.es_host, CONFIG.twitter, args.limit)
-
-    if args.update:
-        get_users(targets, CONFIG.twitter, CONFIG.es_host)
-        get_timeline(targets, CONFIG.es_host, CONFIG.twitter, args.limit)
+        for user in users:
+            print(user["username"])
+    with concurrent.futures.ThreadPoolExecutor(max_workers=int(args.max)) as executor:
+        twitter_bots = {executor.submit(update, chunk, CONFIG.twitter, CONFIG.es_host, args.limit): chunk for chunk in data}
 main()
