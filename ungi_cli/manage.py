@@ -333,7 +333,6 @@ class OperationsManager(cmd2.Cmd):
                     print("canceled")
 
         else:
-
             if args.b:
                 columns = create_list_table("source")
                 list_view: List[Any] = list()
@@ -341,16 +340,16 @@ class OperationsManager(cmd2.Cmd):
                 with open(args.u, "r") as input_file:
                     for line in input_file:
                         targets.append(line.rstrip())
-                        list_view.append([line.rstrip(), "Add to targets"])
+                        list_view.append([line.rstrip(), "remove from targets"])
 
                 bt = BorderedTable(columns)
                 table = bt.generate_table(list_view)
                 ansi_print(table)
-                prompt = input("Are you sure you want to add this list to the target list?\n(YES/NO): ")
+                prompt = input("Are you sure you want to remove this list of users from the target list?\n(YES/NO): ")
                 if prompt == "YES":
 
                     for target in targets:
-                        update_target(self.database_path, target, 1)
+                        update_target(self.database_path, target, 0)
                 else:
                     print("Canceled")
             else:
