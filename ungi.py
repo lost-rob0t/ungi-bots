@@ -2,11 +2,47 @@
 import sqlite3
 import subprocess as sub
 import cmd2
-from ungi_cli.utils.Config import config
-from ungi_cli.utils.Sqlite3_Utils import db_init
+from ungi_utils.Config import config
+from ungi_utils.Sqlite3_Utils import db_init
 import argparse
 from os import environ
 # WARNING: THIS IS INSECURE DO NOT RUN IN PRODUCTION!!!
+
+
+banner = """
+╦ ╦╔╗╔╔═╗╦
+║ ║║║║║ ╦║
+╚═╝╝╚╝╚═╝╩
+╦ ╦┌┐┌┌─┐┌─┐┌─┐┌┐┌
+║ ║│││└─┐├┤ ├┤ │││
+╚═╝┘└┘└─┘└─┘└─┘┘└┘
+╔═╗┬┌─┐┌┐┌┌┬┐┌─┐
+║ ╦│├─┤│││ │ └─┐
+╚═╝┴┴ ┴┘└┘ ┴ └─┘
+╦┌┐┌┌┬┐┌─┐┬  ┬  ┬┌─┐┌─┐┌┐┌┌─┐┌─┐
+║│││ │ ├┤ │  │  ││ ┬├┤ ││││  ├┤
+╩┘└┘ ┴ └─┘┴─┘┴─┘┴└─┘└─┘┘└┘└─┘└─┘
+╔═╗┬─┐┌─┐┌┬┐┌─┐┬ ┬┌─┐┬─┐┬┌─
+╠╣ ├┬┘├─┤│││├┤ ││││ │├┬┘├┴┐
+╚  ┴└─┴ ┴┴ ┴└─┘└┴┘└─┘┴└─┴ ┴
+
+          .  .
+          dOO  OOb
+         dOP'..'YOb
+         OOboOOodOO
+       ..YOP.  .YOP..
+     dOOOOOObOOdOOOOOOb
+    dOP' dOYO()OPOb 'YOb
+        O   OOOO   O
+    YOb. YOdOOOObOP .dOP
+     YOOOOOOP  YOOOOOOP
+       ''''      ''''
+
+
+
+"""
+print(banner)
+
 
 class ungi(cmd2.Cmd):
     def __init__(self):
@@ -50,6 +86,9 @@ class ungi(cmd2.Cmd):
             self.database_path = args.p
         print("Setting up sqlite3 database")
         db_init(self.database_path, config("DB", "script", self.config))
+
+    def do_manage(self, *args):
+       sub.run([f"{self.plugins}/manage.py"])
 
 
 if __name__ == '__main__':
