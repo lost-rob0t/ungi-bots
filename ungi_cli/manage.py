@@ -361,7 +361,7 @@ class OperationsManager(cmd2.Cmd):
                         add_twitter(self.database_path, line.rstrip(), args.Id)
                         log_user(self.database_path, line.rstrip(), "ungi", "twitter.com", args.Id)
 
-        if prompt == "NO" or "no":
+        else:
             print("canceled")
 
 if __name__ == '__main__':
