@@ -2,7 +2,7 @@
 
 import cmd2, cmd2.ansi
 from typing import List, Any
-from utils.Config import config, list_index
+from ungi_utils.Config import config, list_index
 import asyncio
 from os import environ
 import argparse
@@ -41,7 +41,7 @@ ejm97   /%%%%%%%/%%\/%%%%%%{}/
 
 
 """
-
+print(banner)
 user_fields = ["ut", "author", "op"]
 content_list = ["m", "body", "text", "title"]
 
