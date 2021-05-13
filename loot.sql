@@ -2,8 +2,9 @@ CREATE TABLE "operations" (
 	"operation_id"	INTEGER NOT NULL,
 	"operation_name"	TEXT NOT NULL UNIQUE,
 	"operation_description"	TEXT,
+	"alert_level"	INTEGER NOT NULL DEFAULT 100,
 	PRIMARY KEY("operation_id")
-);
+)
 CREATE TABLE "discord" (
 	"discord_id"	INTEGER NOT NULL,
 	"server_id"	INTEGER NOT NULL UNIQUE,
@@ -31,7 +32,7 @@ CREATE TABLE "users" (
 );
 CREATE TABLE "watch_list" (
 	"watch_id"	INTEGER NOT NULL,
-	"word:"	TEXT NOT NULL UNIQUE,
+	"word"	TEXT NOT NULL UNIQUE,
 	"operation_id"	INTEGER NOT NULL,
 	FOREIGN KEY("operation_id") REFERENCES "operations"("operation_id") ON DELETE CASCADE,
 	PRIMARY KEY("watch_id")

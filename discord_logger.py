@@ -7,7 +7,7 @@ import asyncio
 import json
 from ungi_utils.Elastic_Wrapper import insert_doc
 from ungi_utils.Config import auto_load, UngiConfig
-from ungi_utils.Sqlite3_Utils import list_servers, hash_  # For setting operation
+from ungi_utils.Sqlite3_Utils import list_servers, hash_, get_alert_level
 from os import environ
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--token", help="Logs in with this token")
@@ -36,10 +36,13 @@ print(conf_file)
 # We are retreiving the list of servers in the watch list
 watch_list = []
 for server in list_servers(database):
-    server_watch = {}
-    server_watch["id"] = server[1]
-    server_watch["operation"] = server[2]
-    watch_list.append(server_watch)
+
+        server_watch = {}
+        server_watch["id"] = server[1]
+        server_watch["operation"] = server[2]
+        server_watch["alert-level"] = get_alert_level(server[2])[0]
+        print(server_watch)
+        watch_list.append(server_watch)
 
 
 async def log_message(url, data):
