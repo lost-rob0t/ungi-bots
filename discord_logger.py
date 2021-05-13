@@ -27,7 +27,7 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-oni = discord.Client()
+UngiBot = discord.Client()
 
 # config stuff
 config_file = auto_load(args.config)
@@ -42,13 +42,14 @@ print(conf_file)
 watch_list = []
 word_list = []
 target_list = []
+# TODO make this more logical
+# maby make a list of tuples?
 for server in list_servers(database):
 
         server_watch = {}
         server_watch["id"] = server[1]
-        server_watch["operation"] = server[2]
-        #server_watch["alert-level"] = get_alert_level(CONFIG.db_path, server[2])[0]
-        server_watch["alert-level"] = 10
+        server_watch["operation-id"] = server[2]
+        server_watch["alert-level"] = get_alert_level(CONFIG.db_path, server[2])[0]
         print(server_watch)
         watch_list.append(server_watch)
 
@@ -75,6 +76,8 @@ def doc_build(message):
     Function used to build docs
     takes a discord message object as input
     """
+    # TODO look for embeds
+    # TODO save image links to doc
     md = {}
     md['date'] = str(message.created_at.isoformat())
     md['uid'] = str(message.author.id)
@@ -90,7 +93,7 @@ def doc_build(message):
     try:
         for id in watch_list:
             if abs(id.get("id")) == abs(message.guild.id):
-                md["operation-id"] = id["operation"]
+                md["operation-id"] = id["operation-id"]
     except KeyError as invalide_item:
         print(invalide_item)
 
@@ -98,44 +101,51 @@ def doc_build(message):
 
 # Ran at startup
 
-@oni.event
+@UngiBot.event
 async def on_ready():
     servers = 0
-    channels = 0
-    for guild in oni.guilds:
+    for guild in UngiBot.guilds:
         if args.show:
             print(f"{guild.id}|{guild}")
         servers += 1
 
     print(f'Watching: {servers} servers')
-    for guild in oni.guilds:
+    for guild in UngiBot.guilds:
         for channel in guild.channels:
-            md_list = []
             try:
                 for message in await channel.history(limit=int(args.max)).flatten():
-                    channels += 1
                     md = doc_build(message)
                     await log_message(args.connection, md)
-            except discord.errors.Forbidden as e:
+            except discord.errors.Forbidden:
                 pass
-            except AttributeError as e:
+            except AttributeError:
                 pass
-@oni.event
+            
+# Ran When a new message is sent to the ungi bot
+
+@UngiBot.event
 async def on_message(message):
-    print(message.content)
     md = doc_build(message)
-    print(md)
-    min_level = 10
-    i = 20
+    min_level = 0
     try:
-        send_alert(str(md["m"]), md["nick"], md["sn"], "new_message", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
+        for watch in watch_list:
+            if watch["operation-id"] == md["operation-id"]:
+                min_level = int(watch["alert-level"])
+                print(md)
+                break
+    except KeyError as e:
+        print(e)
+        print(f"{md['sn']}: is not in the UNGI db")
+    
+    try:
+        if 20 >= min_level:
+            send_alert(str(md["m"]), md["nick"], md["sn"], "new_message", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
     except KeyError as e:
         print(e)
     try:
         for target in target_list:
             if target["target"] == md["ut"]:
-                i = 75
-                if i >= min_level:
+                if 75 >= min_level:
                     send_alert(md["m"], md["nick"], md["sn"], "target", CONFIG.server_host + "/" + CONFIG.server_port + "/alert")
     except KeyError:
         pass
@@ -143,9 +153,8 @@ async def on_message(message):
         try:
             r = re.match(word, md["m"])
             if r:
-                i = 85
                 source = md["sn"] + " | " + r
-                if i >= min_level:
+                if 85 >= min_level:
                     send_alert(md["m"], md["nick"], source, "watch_word", CONFIG.server_host + "/" + CONFIG.server_port + "/alert")
         except KeyError:
             pass
@@ -156,7 +165,7 @@ async def on_message(message):
 
 
 # ran when bot joins server
-@oni.event
+@UngiBot.event
 async def on_guild_join(guild):
     print(f'joined: {guild}')
     for channel in guild.channels:
@@ -164,12 +173,12 @@ async def on_guild_join(guild):
             for message in await channel.history(limit=int(args.max)).flatten():
                 md = doc_build(message)
                 await log_message(args.connection, md)
-        except discord.errors.Forbidden as e:
+        except discord.errors.Forbidden:
             pass
-        except AttributeError as e:
+        except AttributeError:
             pass
 
 # We start the bot.
-# bot=False means it is started as a self bot
+# Note: This only works in discord.py-self pkg becuase discord removed self bots
 
-oni.run(args.token)
+UngiBot.run(args.token)
