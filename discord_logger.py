@@ -146,7 +146,7 @@ async def on_message(message):
         for target in target_list:
             if target["target"] == md["ut"]:
                 if 75 >= min_level:
-                    send_alert(md["m"], md["nick"], md["sn"], "target", CONFIG.server_host + "/" + CONFIG.server_port + "/alert")
+                    send_alert(md["m"], md["nick"], md["sn"], "target", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
     except KeyError:
         pass
     for word in word_list:
@@ -154,8 +154,8 @@ async def on_message(message):
             r = re.match(word, md["m"])
             if r:
                 source = md["sn"] + " | " + r
-                if 85 >= min_level:
-                    send_alert(md["m"], md["nick"], source, "watch_word", CONFIG.server_host + "/" + CONFIG.server_port + "/alert")
+                if 85>= min_level:
+                    send_alert(md["m"], md["nick"], source, "watch_word", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
         except KeyError:
             pass
 
