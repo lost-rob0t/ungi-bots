@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 #!/usr/bin/env python3
-from ungi_cli.utils.Elastic_Wrapper import insert_doc
-from ungi_cli.utils.Sqlite3_Utils import hash_, list_telegram
-from ungi_cli.utils.Config import auto_load, UngiConfig
-from ungi_cli.utils.entity_utils import extract_ent, get_hashtags, fix_up
+from ungi_utils.Elastic_Wrapper import insert_doc
+from ungi_utils.Sqlite3_Utils import hash_, list_telegram, get_alert_level, list_targets, get_words
+from ungi_utils.Config import auto_load, UngiConfig
+from ungi_utils.entity_utils import get_hashtags, send_alert
 import os
 import datetime
 from telethon import TelegramClient, events, sync, utils
@@ -16,7 +16,7 @@ import argparse
 from time import sleep
 from random import shuffle
 import pytz
-
+import re
 # i got this from here
 # https://stackoverflow.com/questions/4563272/convert-a-python-utc-datetime-to-a-local-datetime-using-only-python-standard-lib
 
@@ -83,7 +83,7 @@ async def doc_builder(message, client, chat_list):
         for chat in chat_list:
             chan_id = chat["chan-id"]
             if abs(chat_data.id) == abs(chan_id):
-                doc["operation-id"] = chat["op-id"]
+                doc["operation-id"] = chat["operation-id"]
 
 
     return doc
@@ -92,9 +92,6 @@ async def doc_builder(message, client, chat_list):
 
 
 async def get_messages(client, es_host, index, watch_list):
-    """
-    Used to grab all available messages
-    """
     for chat in watch_list:
         try:
             async for message in client.iter_messages(chat["chan-id"]):
@@ -149,7 +146,6 @@ async def get_messages(client, es_host, index, watch_list):
         print("done, waiting to avoid timeouts")
         sleep(1)
 
-
 async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config", help="Path to config file")
@@ -180,20 +176,33 @@ async def main():
     # We are retreiving the list of servers in the watch list
     watch_list = []
     chat_id_list = []
-
+    target_list = []
+    word_list = []
     async with client:
 
         for chat in list_telegram(CONFIG.db_path):
             chat_watch = {}
             real_id = utils.resolve_id(abs(chat[0]))[0]
             chat_watch["rid"] = real_id
+            
             #Note: this is checking for a prefix of 100.
             if int(str(abs(real_id))[:3]) == 100:
                 real_id = int(str(abs(real_id))[3:])
-            chat_watch["id"] = real_id
-            chat_watch["operation"] = int(chat[2])
+            chat_watch["chan-id"] = real_id
+            chat_watch["operation-id"] = int(chat[2])
+            chat_watch["alert-level"] = get_alert_level(CONFIG.db_path, chat[2])[0]
             watch_list.append(chat_watch)
 
+
+        for word in get_words(CONFIG.db_path):
+            word_d = {}
+            word_d["word"] = word[0]
+            word_d["operation-id"] = word[1]
+
+        for target in list_targets(CONFIG.db_path):
+            target_d = {}
+            target_d["target"] = target[0]
+            target_d["operation-id"] = target[2]
 
         dialogs = await client.get_dialogs()
 
@@ -205,10 +214,12 @@ async def main():
             for chat in watch_list:
                 if int(str(abs(chan.id))[:3]) == 100:
                     chan.id = int(str(abs(chan.id))[3:])
-                if chan.id == chat["id"]:
+                if chan.id == chat["chan-id"]:
                     chat_id_list.append(abs(chan.id))
-                    d["op-id"] = chat["operation"]
-                    d["chan-id"] = abs(chat['id'])
+                    
+                    # this is kind of retarded
+                    d["operation-id"] = chat["operation-id"]
+                    d["chan-id"] = abs(chat['chan-id'])
                     channel_list.append(d)
 
         if args.show:
@@ -216,29 +227,67 @@ async def main():
                 print(id)
 
         if args.full:
-
             shuffle(channel_list)  # randomized
             await get_messages(client, CONFIG.es_host, CONFIG.telegram, channel_list)
             print("done, waiting to avoid timeouts")
 
         @client.on(events.NewMessage(chats=chat_id_list))
         async def newMessage(event):
-            d = await doc_builder(event.message, cli/ent, watch_list)
+            d = await doc_builder(event.message, client, watch_list)
             await log_message(CONFIG.es_host, CONFIG.telegram, d)
-
+            min_level = 0
+            print(d)
+            
+            # We loop over hte list of operations. if the doc has the operation id and the watch list has one
+            # we then set the corsponding alert level
+            for chat in watch_list:
+                if d["operation-id"] == chat["operation-id"]:
+                    min_level = chat["alert-level"]
             try:
-                if message.media.photo:
+                if 20 >= min_level and event.message.media is None:
+                    if d["ut"]:
+                        send_alert(d["m"], d["ut"], d["group"], "new_message", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
+                    else:
+                        send_alert(d["m"], d["group"], d["group"], "new_message", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
+            except KeyError:
+                    pass
+            except AttributeError:
+                pass
+            try:
+                for target in target_list:
+                    if target["target"] == d["ut"]:
+                        if 75 >= min_level:
+                            send_alert("New image", d["ut"], d["group"].rstrip(), "target", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
+            except KeyError:
+                pass
+            for word in word_list:
+                try:
+                    r = re.match(word, d["m"])
+                    if r:
+                        source = d["group"] + " | " + r
+                        if 85>= min_level:
+                            send_alert(d["m"], d["ut"], source, "watch_word", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
+                except KeyError:
+                    pass
+
+            print("Media")
+            try:
+                if event.message.media.photo:
                     if store_media:
                         try:
-                            path = media_path + str(aslocaltimestr(message.date)) + f"_{d['group']}.jpg"
+                            path = media_path + str(aslocaltimestr(event.message.date)) + f"_{d['group']}.jpg"
                         except KeyError:
                             path = media_path + \
-                                str(aslocaltimestr(message.date)) + ".jpg"
+                                str(aslocaltimestr(event.message.date)) + ".jpg"
                         if os.path.exists(path):
                             if q == False:
                                 print("Duplicate file: " + path)
-                            else:
-                                await client.download_media(message.media, path)
+                        else:
+                            await client.download_media(event.message.media, path)
+                            if 20 >= 20:
+                                send_alert(d["m"], d["ut"], d["group"], "image", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"), path)
+                                print("send image to alert")
+
             except AttributeError:
                 pass #no error spam
 
@@ -246,15 +295,15 @@ async def main():
                 if event.message.media.webpage:
                     web_loot = {}
                     web_loot["type"] = "url"
-                    web_loot["url"] = message.media.webpage.url
-                    web_loot["site"] = message.media.webpage.site_name
-                    web_loot["discription"] = message.media.webpage.description
-                    web_loot["title"] = message.media.webpage.title
-                    web_loot["display_url"] = message.media.webpage.display_url
+                    web_loot["url"] = event.message.media.webpage.url
+                    web_loot["site"] = event.message.media.webpage.site_name
+                    web_loot["discription"] = event.message.media.webpage.description
+                    web_loot["title"] = event.message.media.webpage.title
+                    web_loot["display_url"] = event.message.media.webpage.display_url
                     web_loot["source_site"] = "telegram"
                     web_loot["date"] = aslocaltimestr(event.message.date)
                     try:
-                        web_loot["author"] = message.media.webpage.author
+                        web_loot["author"] = event.message.media.webpage.author
                     except KeyError:
                         pass
                     try:
@@ -265,10 +314,11 @@ async def main():
                         web_loot["title"] = "None"
                     hash_id = hash_(web_loot["url"] + web_loot["title"] + web_loot["source"])
                     await insert_doc(CONFIG.es_host, CONFIG.loot, web_loot, hash_id)
+                    
+                    if 20 >= min_level:
+                        send_alert(web_loot["url"], d["ut"], d["group"], "new_message", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
             except AttributeError:
                 pass
-
-
 
         await client.run_until_disconnected()
 
