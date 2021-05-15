@@ -270,24 +270,22 @@ async def main():
                 except KeyError:
                     pass
 
-            print("Media")
             try:
-                if event.message.media.photo:
+                print(event.message.stringify())
+                if event.message.photo:
                     if store_media:
                         try:
                             path = media_path + str(aslocaltimestr(event.message.date)) + f"_{d['group']}.jpg"
+                            send_alert(d["m"], d["ut"], d["group"], "image", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"), path)
+                            if os.path.exists(path):
+                                if q == False:
+                                    print("Duplicate file: " + path)
+                            else:
+                                await client.download_media(event.message.media, path)
+                                if 20 >= min_level:
+                                    send_alert(d["m"], d["ut"], d["group"], "image", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"), path)
                         except KeyError:
-                            path = media_path + \
-                                str(aslocaltimestr(event.message.date)) + ".jpg"
-                        if os.path.exists(path):
-                            if q == False:
-                                print("Duplicate file: " + path)
-                        else:
-                            await client.download_media(event.message.media, path)
-                            if 20 >= 20:
-                                send_alert(d["m"], d["ut"], d["group"], "image", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"), path)
-                                print("send image to alert")
-
+                            pass
             except AttributeError:
                 pass #no error spam
 
