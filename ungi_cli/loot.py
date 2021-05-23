@@ -2,7 +2,7 @@
 
 import cmd2, cmd2.ansi
 from typing import List, Any
-from ungi_utils.Config import config, list_index
+from ungi_utils.Config import config, list_index, UngiConfig, auto_load
 import asyncio
 from os import environ
 import argparse
@@ -20,6 +20,8 @@ from cmd2.table_creator import (
     Column,
     HorizontalAlignment,
 )
+
+# TODO move all config stuff to UngiConfig
 
 banner = """
                 ___________)%%%%%%%%%/
@@ -42,7 +44,11 @@ ejm97   /%%%%%%%/%%\/%%%%%%{}/
 
 """
 print(banner)
+
+# fields containing the username
 user_fields = ["ut", "author", "op"]
+
+# fields containting content
 content_list = ["m", "body", "text", "title"]
 
 def ansi_print(text):
@@ -171,11 +177,13 @@ class Looter(cmd2.Cmd):
         self.prompt = "ungi[looter]> "
         self.es_host = "http://127.0.0.1:9200"
         self.Id = 0
+        self.CONFIG = UngiConfig(auto_load())
         try:
             self.config = environ['UNGI_CONFIG']
             self.database = config("DB", "path", self.config)
             self.es_host = config("ES", "host", self.config)
             self.indexes = list_index("INDEX", self.config)
+
         except KeyError as no_environ:
             try:
                 self.config = "app.ini"
@@ -200,6 +208,7 @@ class Looter(cmd2.Cmd):
     def do_dump_users(self, args):
         if args.d:
             discord_index = config("INDEX", "discord", self.config)
+            discord_index = UngiConfig
             data =  dump_users(self.es_host, "ut", discord_index, "discord")
             if args.c:
                 headers = ["username", "website", "source", "operation-id", "hashid"]
@@ -322,6 +331,23 @@ class Looter(cmd2.Cmd):
                         log_user(self.database, doc["author"], doc["subreddit"], "reddit.com", doc["operation-id"])
                     except KeyError:
                         log_user(self.database, doc["op"], doc["subreddit"], "reddit.com", doc["operation-id"])
+
+        if args.t:
+            telegram = config("INDEX", "telegram", self.config)
+            if args.u:
+                data = search_by_user(self.es_host, telegram, args.search_term, "telegram", args.l)
+            else:
+                data = content_search(self.es_host, telegram, args.search_term, "telegram", args.l)
+
+            data_list: List[List[Any]] = list()
+            for doc in data["hits"]["hits"]:
+                doc = doc["_source"]
+                data_list.append([doc["ut"], doc["m"], doc["group"], doc["date"]])
+
+            bt = BorderedTable(build_search_table("telegram"))
+            table = bt.generate_table(data_list)
+            ansi_print(table)
+
 if __name__ == "__main__":
     import sys
     loot = Looter()
