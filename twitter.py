@@ -83,7 +83,10 @@ def get_users(target_list, index, es_host):
             d = doc_build("info", info, target["operation-id"])
             asyncio.run(insert_doc(es_host, index, d, d["id"]))
         except Exception:
-            continue #due to somthing brokeck with twint
+            """
+            Twint is in dissarray and looks like we are goign to have to
+            fork it. on the github there is many open pr"""
+            continue # lots of random exceptions read above
 
 
 def get_timeline(target_list, es_host, index, limit):
@@ -186,7 +189,9 @@ def main():
     global proxy_port
     global tor_pass
     CONFIG = UngiConfig(auto_load(args.config))
-    proxy_type = CONFIG.proxy_type
+    proxy_type = CONFIG.proxy_type.lower()
+    if proxy_type == "tor":
+        proxy_type = "socks5"
     proxy_host = CONFIG.proxy_host
     proxy_port = CONFIG.proxy_port
     tor_pass = CONFIG.tor_pass
