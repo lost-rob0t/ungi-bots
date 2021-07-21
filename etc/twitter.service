@@ -12,5 +12,5 @@ Description=twitter.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/twitter.py -c /etc/ungi/app.ini
+ExecStart=/usr/local/bin/twitter.py -c /etc/ungi/app.ini -l 30 -T 6 -C 20 -u
 WorkingDirectory=/path/to/install

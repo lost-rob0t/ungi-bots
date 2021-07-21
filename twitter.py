@@ -16,6 +16,9 @@ import concurrent.futures
 import itertools
 from random import shuffle
 
+
+
+
 def chunked(list_in, size):
     """
     function used to split up list to give to multithreader
@@ -50,7 +53,7 @@ def get_twitters(path):
     # Username is index 0 and operation-id is index 1
     for record in data:
         twit_d = {}
-        twit_d["username"] = record[0]
+        twit_d["username"] = record[0].rstrip()
         twit_d["operation-id"] = record[1]
         watch_list.append(twit_d)
 
@@ -68,29 +71,45 @@ def get_users(target_list, index, es_host):
         c.Username = username
         c.Pandas = True
         c.Hide_output = verbose
+        c.Proxy_type = "sock5"
+        c.Proxy_host = "127.0.0.1"
+        c.Proxy_port = 9050
+        c.Tor_control_port = 9051
+        c.Tor_control_pass = tor_pass
+        print(username)
         twint.run.Lookup(c)
-        info = twint.storage.panda.User_df
-        d = doc_build("info", info, target["operation-id"])
-        asyncio.run(insert_doc(es_host, index, d, d["id"]))
+        try:
+            info = twint.storage.panda.User_df
+            d = doc_build("info", info, target["operation-id"])
+            asyncio.run(insert_doc(es_host, index, d, d["id"]))
+        except Exception:
+            continue #due to somthing brokeck with twint
 
 
 def get_timeline(target_list, es_host, index, limit):
     for target in target_list:
+        print(target)
         t = []
         c = twint.Config()
         c.Username = target["username"]
         c.Limit = limit
         c.Hide_output = verbose
         c.Pandas = True
-        c.Min_wait_time = 3
         c.Retries_count = 3
         c.Pandas_au = True
         c.Pandas_clean = True
-        twint.run.Search(c)
-        data = twint.storage.panda.Tweets_df
-        d_list = []
+        c.Proxy_port = 9050
+        c.Tor_control_port = 9051
+        c.Tor_control_pass = tor_pass
+        c.Proxy_type = "socks5"
+        c.Proxy_host = "127.0.0.1"
+        try:
+            twint.run.Search(c)
+            data = twint.storage.panda.Tweets_df
+            d_list = []
+        except KeyError:
+            continue
 
-        data = twint.storage.panda.Tweets_df
         for tweet_data in data.itertuples():
             d = doc_build("tweet", tweet_data, target["operation-id"])
             d_list.append(d)
@@ -125,8 +144,11 @@ def doc_build(d_type, panda_in, operation_id):
         doc["operation-id"] = operation_id
         doc["tweet-id"] = panda_in.id
         doc["geo"] = panda_in.geo
-        doc["link"] = panda_in.link
-        doc["urls"] = panda_in.urls
+        try:
+            doc["link"] = panda_in.link
+            doc["urls"] = panda_in.urls
+        except KeyError:
+            pass
         doc["photos"] = panda_in.photos
         doc["retweet"] = panda_in.retweet
         doc["place"] = panda_in.place
@@ -149,7 +171,7 @@ def main():
     global verbose
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--full", help="Grab everything", action="store_true")
-    parser.add_argument("-c", "--config", help="path to config")
+    parser.add_argument("-c", "--config", help="path to config", default="app.ini")
     parser.add_argument("-s", "--show", help="Show Targets", action="store_true")
     parser.add_argument("-l", "--limit", help="Max tweets to pull", default=25)
     parser.add_argument("-u", "--update", help="update user profile info", action="store_true")
@@ -159,9 +181,17 @@ def main():
     args = parser.parse_args()
     verbose = args.verbose
     global local_tz
+    global proxy_type
+    global proxy_host
+    global proxy_port
+    global tor_pass
     CONFIG = UngiConfig(auto_load(args.config))
+    proxy_type = CONFIG.proxy_type
+    proxy_host = CONFIG.proxy_host
+    proxy_port = CONFIG.proxy_port
+    tor_pass = CONFIG.tor_pass
     local_tz = CONFIG.timezone
-
+    print(tor_pass)
     users = get_twitters(CONFIG.db_path)
     shuffle(users) #ban evasion
     data = chunked(users, int(args.chunk))
