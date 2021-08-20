@@ -3,7 +3,7 @@
 import argparse
 import twint
 import pandas
-from ungi_utils.Sqlite3_Utils import list_twitter, hash_
+from ungi_utils.Sqlite3_Utils import list_twitter, hash_,twitter_by_operation
 from ungi_utils.Elastic_Wrapper import insert_doc
 from ungi_utils.Config import UngiConfig, auto_load
 import json
@@ -46,11 +46,15 @@ def chunked(list_in, size):
             break
 
 
-def get_twitters(path):
-    data = list_twitter(path)
+def get_twitters(path, operation_id=None):
+    if operation_id is None:
+        data = list_twitter(path)
+    else:
+        data = twitter_by_operation(path, operation_id)
     watch_list = []
     # We are iterating over the returned records.
     # Username is index 0 and operation-id is index 1
+
     for record in data:
         twit_d = {}
         twit_d["username"] = record[0].rstrip()
@@ -177,6 +181,7 @@ def main():
     parser.add_argument("-c", "--config", help="path to config", default="app.ini")
     parser.add_argument("-s", "--show", help="Show Targets", action="store_true")
     parser.add_argument("-l", "--limit", help="Max tweets to pull", default=25)
+    parser.add_argument("--operation", help="Pull from a operation id.")
     parser.add_argument("-u", "--update", help="update user profile info", action="store_true")
     parser.add_argument("-v", "--verbose", default="True", action="store_false")
     parser.add_argument("-T", "--threads", help="max amount of threads", default=3)
@@ -197,11 +202,15 @@ def main():
     tor_pass = CONFIG.tor_pass
     local_tz = CONFIG.timezone
     print(tor_pass)
-    users = get_twitters(CONFIG.db_path)
+    if args.operation:
+        users = get_twitters(CONFIG.db_path, int(args.operation))
+    else:
+        users = get_twitters(CONFIG.db_path)
     shuffle(users) #ban evasion
     data = chunked(users, int(args.chunk))
     if args.show:
         t = len(users)
+        print(t)
         print(f"watching {t} users....")
         for user in users:
             print(user["username"])
