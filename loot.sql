@@ -75,3 +75,9 @@ CREATE TABLE "twitter" (
 	FOREIGN KEY("operation-id") REFERENCES "operations"("operation_id") ON DELETE CASCADE,
 	PRIMARY KEY("twitter_uid")
 );
+CREATE TABLE "telegram_bots" (
+	"id"	INTEGER,
+	"api_id"	INTEGER NOT NULL UNIQUE,
+	"api_hash"	TEXT NOT NULL UNIQUE,
+	PRIMARY KEY("id")
+);
