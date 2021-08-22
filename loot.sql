@@ -81,3 +81,8 @@ CREATE TABLE "telegram_bots" (
 	"api_hash"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("id")
 );
+CREATE TABLE "discord_bots" (
+	"id"	INTEGER NOT NULL,
+	"token"	TEXT UNIQUE,
+	PRIMARY KEY("id")
+)

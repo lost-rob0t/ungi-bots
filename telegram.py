@@ -92,8 +92,10 @@ async def doc_builder(message, client, chat_list):
 
 
 async def get_messages(client, es_host, index, watch_list):
+    print("grabbing messages")
     for chat in watch_list:
         try:
+            print(chat)
             async for message in client.iter_messages(chat["chan-id"]):
                 d = await doc_builder(message, client, watch_list)
                 if d["m"]:
@@ -149,6 +151,9 @@ async def get_messages(client, es_host, index, watch_list):
 async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config", help="Path to config file")
+    parser.add_argument("--appid", help="app id")
+    parser.add_argument("--phone", help="account phone number")
+    parser.add_argument("--apphash", help="app hash")
     parser.add_argument(
         "-f",
         "--full",
@@ -167,11 +172,14 @@ async def main():
     # config setup
 
     CONFIG = UngiConfig(auto_load(args.config))
-    print(CONFIG.config_path)
+    print("Ungi Config: ", CONFIG.config_path)
+    print("Telegram app id: ", args.appid)
+    print("Telegram app hash: ", args.apphash)
+    print("telegram Phone number: ", args.phone)
     loot_index = CONFIG.loot
     store_media = bool(CONFIG.telegram_store_media)
     media_path = CONFIG.telegram_media
-    client = TelegramClient(CONFIG.telegram_session , CONFIG.telegram_api_id, CONFIG.telegram_api_hash)
+    client = TelegramClient(CONFIG.session_dir + "/" + args.apphash + ".session", args.appid, args.apphash)
     local_tz = pytz.timezone(CONFIG.timezone)
     # We are retreiving the list of servers in the watch list
     watch_list = []
@@ -226,10 +234,6 @@ async def main():
             for id in channel_list:
                 print(id)
 
-        if args.full:
-            shuffle(channel_list)  # randomized
-            await get_messages(client, CONFIG.es_host, CONFIG.telegram, channel_list)
-            print("done, waiting to avoid timeouts")
 
         @client.on(events.NewMessage(chats=chat_id_list))
         async def newMessage(event):
@@ -271,7 +275,6 @@ async def main():
                     pass
 
             try:
-                print(event.message.stringify())
                 if event.message.photo:
                     if store_media:
                         try:
@@ -283,7 +286,10 @@ async def main():
                             else:
                                 await client.download_media(event.message.media, path)
                                 if 20 >= min_level:
-                                    send_alert(d["m"], d["ut"], d["group"], "image", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"), path)
+                                    if d["ut"]:
+                                        send_alert(d["m"], d["ut"], d["group"], "image", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"), path)
+                                    else:
+                                        send_alert(d["m"], d["group"], d["group"], "image", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"), path)
                         except KeyError:
                             pass
             except AttributeError:
@@ -317,7 +323,10 @@ async def main():
                         send_alert(web_loot["url"], d["ut"], d["group"], "new_message", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
             except AttributeError:
                 pass
-
+            if args.full:
+                shuffle(channel_list)  # randomized
+                await get_messages(client, CONFIG.es_host, CONFIG.telegram, channel_list)
+                print("done, waiting to avoid timeouts")
         await client.run_until_disconnected()
 
 loop = asyncio.get_event_loop()
