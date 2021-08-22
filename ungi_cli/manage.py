@@ -22,7 +22,9 @@ from  ungi_utils.Sqlite3_Utils import (
     move_twitter,
     list_twitter,
     log_user,
-    list_targets
+    list_targets,
+    add_discord_bot,
+    add_telegram_bot
     )
 
 from ungi_utils.Config import config
@@ -439,6 +441,28 @@ class OperationsManager(cmd2.Cmd):
 
         else:
             print("canceled")
+
+    bot_parser = argparse.ArgumentParser()
+    bot_parser.add_argument("-d", help="Discord token")
+    bot_parser.add_argument("--id", help="telegram api id")
+    bot_parser.add_argument("--hash", help="telegram api hash")
+    bot_parser.add_argument("--phone", help="telegram phone")
+    @cmd2.with_argparser(bot_parser)
+    def do_add_bot(self, args):
+      if args.d:
+         print(f"Adding discord account {args.d}")
+         prompt = input("Is this ok?\n(y/n)")
+         if prompt.lower() == "y":
+            add_discord_bot(self.database_path, args.d)
+         else:
+            print("Canceled")
+      if args.id:
+         print(f"Adding telegram account {args.phone}")
+         prompt = input("Is this ok?\n(y/n)")
+         if prompt.lower() == "y":
+            add_telegram_bot(self.database_path, args.hash, args.id, args.phone)
+         else:
+            print("Canceled")
 
 if __name__ == '__main__':
     import sys
