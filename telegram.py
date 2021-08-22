@@ -162,9 +162,6 @@ async def main():
     parser.add_argument("-s", "--show", help="Show channel id so you can add them to db", action='store_true')
     parser.add_argument("-q", "--quiet", help="suppress output", action='store_true', default=False)
     parser.add_argument("-d", "--dump", help="dump channel ids to a file")
-    parser.add_argument("--appid", help="app id")
-    parser.add_argument("--phone", help="account phone number")
-    parser.add_argument("--apphash", help="app hash")
     args = parser.parse_args()
     global q
     global loot_index
