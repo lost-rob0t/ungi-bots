@@ -156,6 +156,7 @@ async def main():
         action="store_true")
     parser.add_argument("-s", "--show", help="Show channel id so you can add them to db", action='store_true')
     parser.add_argument("-q", "--quiet", help="suppress output", action='store_true', default=False)
+    parser.add_argument("-d", "--dump", help="dump channel ids to a file")
     args = parser.parse_args()
     global q
     global loot_index
@@ -207,7 +208,9 @@ async def main():
         dialogs = await client.get_dialogs()
 
         channel_list = []
+        file_output = []
         for chan in dialogs:
+            file_output.append(f"{abs(chan.id)}|{chan.title}")
             if args.show:
                 print(f"{abs(chan.id)}|{chan.title}")
             d = {}
@@ -222,9 +225,10 @@ async def main():
                     d["chan-id"] = abs(chat['chan-id'])
                     channel_list.append(d)
 
-        if args.show:
-            for id in channel_list:
-                print(id)
+        if args.dump:
+            with open(args.dump, "a") as file_out:
+                for line in file_output:
+                    file_out.write(line)
 
         if args.full:
             shuffle(channel_list)  # randomized
