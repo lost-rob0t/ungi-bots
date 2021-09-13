@@ -86,3 +86,10 @@ CREATE TABLE "discord_bots" (
 	"token"	TEXT UNIQUE,
 	PRIMARY KEY("id")
 )
+CREATE TABLE "rss" (
+	"operation_id"	INTEGER,
+	"url"	TEXT UNIQUE,
+	"feed_id"	INTEGER NOT NULL,
+	PRIMARY KEY("feed_id"),
+	FOREIGN KEY("operation_id") REFERENCES "operations"("operation_id") ON DELETE CASCADE
+)
