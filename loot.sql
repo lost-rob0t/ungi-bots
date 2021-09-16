@@ -103,7 +103,7 @@ CREATE TABLE "crawler" (
 	"email"	TEXT,
 	"password"	TEXT,
 	"laste_update"	INTEGER,
-	"send_alerts"	INTEGER,
+	"send_alert"	INTEGER,
 	"update"	INTEGER,
 	FOREIGN KEY("operation_id") REFERENCES "operations"("operation_id") ON DELETE CASCADE,
 	PRIMARY KEY("crawl_id")
