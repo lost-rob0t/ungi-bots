@@ -94,18 +94,17 @@ CREATE TABLE "rss" (
 	FOREIGN KEY("operation_id") REFERENCES "operations"("operation_id") ON DELETE CASCADE
 )
 CREATE TABLE "crawler" (
-	"url"	TEXT NOT NULL UNIQUE,
-	"domain"	TEXT NOT NULL,
-	"update"	INTEGER NOT NULL DEFAULT 0,
-	"source"	TEXT,
 	"crawl_id"	INTEGER,
 	"operation_id"	INTEGER,
+	"url"	TEXT NOT NULL UNIQUE,
+	"domain"	TEXT NOT NULL,
 	"cookie"	TEXT,
 	"username"	TEXT,
 	"email"	TEXT,
 	"password"	TEXT,
-	"last_update"	TEXT,
-	"send_alets"	INTEGER NOT NULL DEFAULT 0,
+	"laste_update"	INTEGER,
+	"send_alerts"	INTEGER,
+	"update"	INTEGER,
 	FOREIGN KEY("operation_id") REFERENCES "operations"("operation_id") ON DELETE CASCADE,
 	PRIMARY KEY("crawl_id")
-)
+))
