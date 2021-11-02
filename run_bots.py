@@ -6,15 +6,18 @@ import argparse
 import subprocess as sub
 import concurrent.futures
 import os
+from time import sleep
 def run_telegram(db_path):
     bot_list = list_telegram_bots(db_path)
     if args.setup:
         for bot in bot_list:
             try:
+                print("10 Minute timeout, hit ctr-c when done")
                 sub.Popen(f"python3 telegram.py --appid {bot[1]} --apphash {bot[0]} -c {args.config} --phone {bot[2]} -s", shell=True)
+                sleep(500)
             except KeyboardInterrupt:
                 print("Setting up next account")
-                break
+                continue
     else:
         print(f"Running {len(bot_list)} telegram accounts")
         if args.dump:
@@ -36,6 +39,9 @@ def main():
     global CONFIG
     print(args.dump)
     CONFIG = UngiConfig(args.config)
+    if args.setup:
+        run_telegram(CONFIG.db_path)
+        exit(0)
     if CONFIG.use_telegram:
         print("Starting Telegram bots")
         run_telegram(CONFIG.db_path)
