@@ -81,3 +81,30 @@ CREATE TABLE "telegram_bots" (
 	"api_hash"	TEXT NOT NULL UNIQUE,
 	PRIMARY KEY("id")
 );
+CREATE TABLE "discord_bots" (
+	"id"	INTEGER NOT NULL,
+	"token"	TEXT UNIQUE,
+	PRIMARY KEY("id")
+)
+CREATE TABLE "rss" (
+	"operation_id"	INTEGER,
+	"url"	TEXT UNIQUE,
+	"feed_id"	INTEGER NOT NULL,
+	PRIMARY KEY("feed_id"),
+	FOREIGN KEY("operation_id") REFERENCES "operations"("operation_id") ON DELETE CASCADE
+)
+CREATE TABLE "crawler" (
+	"crawl_id"	INTEGER,
+	"operation_id"	INTEGER,
+	"url"	TEXT NOT NULL UNIQUE,
+	"domain"	TEXT NOT NULL,
+	"cookie"	TEXT,
+	"username"	TEXT,
+	"email"	TEXT,
+	"password"	TEXT,
+	"laste_update"	INTEGER,
+	"send_alert"	INTEGER,
+	"update"	INTEGER,
+	FOREIGN KEY("operation_id") REFERENCES "operations"("operation_id") ON DELETE CASCADE,
+	PRIMARY KEY("crawl_id")
+))

@@ -139,14 +139,16 @@ async def on_message(message):
     
     try:
         if 20 >= min_level:
-            send_alert(str(md["m"]), md["nick"], md["sn"], "new_message", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
+            if md["oepration-id"]:
+                    send_alert(str(md["m"]), md["nick"], md["sn"], "new_message", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
     except KeyError as e:
         print(e)
     try:
         for target in target_list:
             if target["target"] == md["ut"]:
                 if 75 >= min_level:
-                    send_alert(md["m"], md["nick"], md["sn"], "target", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
+                        if md["oepration-id"]:
+                                send_alert(str(md["m"]), md["nick"], md["sn"], "target", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
     except KeyError:
         pass
     for word in word_list:

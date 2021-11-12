@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 
-#!/usr/bin/env python3
-from ungi_utils.Elastic_Wrapper import insert_doc
-from ungi_utils.Sqlite3_Utils import hash_, list_telegram, get_alert_level, list_targets, get_words
-from ungi_utils.Config import auto_load, UngiConfig
-from ungi_utils.entity_utils import get_hashtags, send_alert
-import os
-import datetime
-from telethon import TelegramClient, events, sync, utils
-from telethon.tl.functions.messages import GetHistoryRequest
-from telethon.tl.types import PeerChannel, PeerUser, PeerChat, Photo
-from telethon.errors.rpcerrorlist import ChatAdminRequiredError, ChannelPrivateError, FloodWaitError
-import asyncio
 import argparse
-from time import sleep
-from random import shuffle
-import pytz
+import asyncio
+import os
 import re
+from random import shuffle
+from time import sleep
+
+import pytz
+from telethon import TelegramClient, events, utils
+from telethon.errors.rpcerrorlist import ChannelPrivateError
+from ungi_utils.Config import UngiConfig, auto_load
+from ungi_utils.Elastic_Wrapper import insert_doc
+from ungi_utils.entity_utils import get_hashtags, send_alert
+from ungi_utils.Sqlite3_Utils import (get_alert_level, get_words, hash_,
+                                      list_targets, list_telegram)
+
 # i got this from here
 # https://stackoverflow.com/questions/4563272/convert-a-python-utc-datetime-to-a-local-datetime-using-only-python-standard-lib
 
@@ -92,8 +91,10 @@ async def doc_builder(message, client, chat_list):
 
 
 async def get_messages(client, es_host, index, watch_list):
+    print("grabbing messages")
     for chat in watch_list:
         try:
+            print(chat)
             async for message in client.iter_messages(chat["chan-id"]):
                 d = await doc_builder(message, client, watch_list)
                 if d["m"]:
@@ -149,6 +150,9 @@ async def get_messages(client, es_host, index, watch_list):
 async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config", help="Path to config file")
+    parser.add_argument("--appid", help="app id")
+    parser.add_argument("--phone", help="account phone number")
+    parser.add_argument("--apphash", help="app hash")
     parser.add_argument(
         "-f",
         "--full",
@@ -157,9 +161,6 @@ async def main():
     parser.add_argument("-s", "--show", help="Show channel id so you can add them to db", action='store_true')
     parser.add_argument("-q", "--quiet", help="suppress output", action='store_true', default=False)
     parser.add_argument("-d", "--dump", help="dump channel ids to a file")
-    parser.add_argument("--appid", help="app id")
-    parser.add_argument("--phone", help="account phone number")
-    parser.add_argument("--apphash", help="app hash")
     args = parser.parse_args()
     global q
     global loot_index
@@ -171,7 +172,10 @@ async def main():
     # config setup
 
     CONFIG = UngiConfig(auto_load(args.config))
-    print(CONFIG.config_path)
+    print("Ungi Config: ", CONFIG.config_path)
+    print("Telegram app id: ", args.appid)
+    print("Telegram app hash: ", args.apphash)
+    print("telegram Phone number: ", args.phone)
     loot_index = CONFIG.loot
     store_media = bool(CONFIG.telegram_store_media)
     media_path = CONFIG.telegram_media
@@ -232,12 +236,8 @@ async def main():
             print("writing to file: ", args.dump)
             with open(args.dump, "a") as file_out:
                 for line in file_output:
-                    file_out.write(line)
+                    file_out.write(line + "\n")
 
-        if args.full:
-            shuffle(channel_list)  # randomized
-            await get_messages(client, CONFIG.es_host, CONFIG.telegram, channel_list)
-            print("done, waiting to avoid timeouts")
 
         @client.on(events.NewMessage(chats=chat_id_list))
         async def newMessage(event):
@@ -279,7 +279,6 @@ async def main():
                     pass
 
             try:
-                print(event.message.stringify())
                 if event.message.photo:
                     if store_media:
                         try:
@@ -291,7 +290,10 @@ async def main():
                             else:
                                 await client.download_media(event.message.media, path)
                                 if 20 >= min_level:
-                                    send_alert(d["m"], d["ut"], d["group"], "image", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"), path)
+                                    if d["ut"]:
+                                        send_alert(d["m"], d["ut"], d["group"], "image", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"), path)
+                                    else:
+                                        send_alert(d["m"], d["group"], d["group"], "image", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"), path)
                         except KeyError:
                             pass
             except AttributeError:
@@ -325,7 +327,10 @@ async def main():
                         send_alert(web_loot["url"], d["ut"], d["group"], "new_message", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
             except AttributeError:
                 pass
-
+            if args.full:
+                shuffle(channel_list)  # randomized
+                await get_messages(client, CONFIG.es_host, CONFIG.telegram, channel_list)
+                print("done, waiting to avoid timeouts")
         await client.run_until_disconnected()
 
 loop = asyncio.get_event_loop()
