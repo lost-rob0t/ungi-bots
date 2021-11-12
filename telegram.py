@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 
-#!/usr/bin/env python3
-from ungi_utils.Elastic_Wrapper import insert_doc
-from ungi_utils.Sqlite3_Utils import hash_, list_telegram, get_alert_level, list_targets, get_words
-from ungi_utils.Config import auto_load, UngiConfig
-from ungi_utils.entity_utils import get_hashtags, send_alert
-import os
-import datetime
-from telethon import TelegramClient, events, sync, utils
-from telethon.tl.functions.messages import GetHistoryRequest
-from telethon.tl.types import PeerChannel, PeerUser, PeerChat, Photo
-from telethon.errors.rpcerrorlist import ChatAdminRequiredError, ChannelPrivateError, FloodWaitError
-import asyncio
 import argparse
-from time import sleep
-from random import shuffle
-import pytz
+import asyncio
+import os
 import re
+from random import shuffle
+from time import sleep
+
+import pytz
+from telethon import TelegramClient, events, utils
+from telethon.errors.rpcerrorlist import ChannelPrivateError
+from ungi_utils.Config import UngiConfig, auto_load
+from ungi_utils.Elastic_Wrapper import insert_doc
+from ungi_utils.entity_utils import get_hashtags, send_alert
+from ungi_utils.Sqlite3_Utils import (get_alert_level, get_words, hash_,
+                                      list_targets, list_telegram)
+
 # i got this from here
 # https://stackoverflow.com/questions/4563272/convert-a-python-utc-datetime-to-a-local-datetime-using-only-python-standard-lib
 
@@ -237,7 +236,7 @@ async def main():
             print("writing to file: ", args.dump)
             with open(args.dump, "a") as file_out:
                 for line in file_output:
-                    file_out.write(line)
+                    file_out.write(line + "\n")
 
 
         @client.on(events.NewMessage(chats=chat_id_list))
