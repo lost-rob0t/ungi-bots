@@ -121,3 +121,17 @@ CREATE TABLE crawl_config (
 	PRIMARY KEY (config_id),
 	FOREIGN KEY(crawl_id) REFERENCES crawler (crawl_id)
 )
+
+CREATE TABLE "twitch_bots" (
+	"oauth"	TEXT NOT NULL UNIQUE,
+	"nickname"	TEXT NOT NULL,
+	"client_id"	TEXT NOT NULL UNIQUE
+)
+
+CREATE TABLE "twitch" (
+	"channel_id"	INTEGER,
+	"name"	TEXT NOT NULL UNIQUE,
+	"operation_id"	INTEGER NOT NULL,
+	FOREIGN KEY("operation_id") REFERENCES "operations"("operation_id") ON DELETE CASCADE,
+	PRIMARY KEY("channel_id")
+)
