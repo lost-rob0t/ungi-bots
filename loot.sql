@@ -93,18 +93,45 @@ CREATE TABLE "rss" (
 	PRIMARY KEY("feed_id"),
 	FOREIGN KEY("operation_id") REFERENCES "operations"("operation_id") ON DELETE CASCADE
 )
-CREATE TABLE "crawler" (
-	"crawl_id"	INTEGER,
-	"operation_id"	INTEGER,
-	"url"	TEXT NOT NULL UNIQUE,
-	"domain"	TEXT NOT NULL,
-	"cookie"	TEXT,
-	"username"	TEXT,
-	"email"	TEXT,
-	"password"	TEXT,
-	"laste_update"	INTEGER,
-	"send_alert"	INTEGER,
-	"update"	INTEGER,
+CREATE TABLE crawler (
+	operation_id INTEGER,
+	crawl_id INTEGER NOT NULL,
+	url VARCHAR NOT NULL,
+	domain VARCHAR NOT NULL,
+	last_update VARCHAR,
+	last_check VARCHAR,
+	send_alert INTEGER,
+	config_fk INTEGER,
+	PRIMARY KEY (crawl_id),
+	FOREIGN KEY(operation_id) REFERENCES operations (operation_id),
+	UNIQUE (url),
+	CONSTRAINT fk_crawl_config_id FOREIGN KEY(config_fk) REFERENCES crawl_config (config_id)
+)
+CREATE TABLE crawl_config (
+	crawl_id INTEGER,
+	config_id INTEGER NOT NULL,
+	cookie VARCHAR,
+	username VARCHAR,
+	email VARCHAR,
+	password VARCHAR,
+	update_method VARCHAR,
+	threshold INTEGER,
+	save_screenshots INTEGER,
+	xpath VARCHAR,
+	PRIMARY KEY (config_id),
+	FOREIGN KEY(crawl_id) REFERENCES crawler (crawl_id)
+)
+
+CREATE TABLE "twitch_bots" (
+	"oauth"	TEXT NOT NULL UNIQUE,
+	"nickname"	TEXT NOT NULL,
+	"client_id"	TEXT NOT NULL UNIQUE
+)
+
+CREATE TABLE "twitch" (
+	"channel_id"	INTEGER,
+	"name"	TEXT NOT NULL UNIQUE,
+	"operation_id"	INTEGER NOT NULL,
 	FOREIGN KEY("operation_id") REFERENCES "operations"("operation_id") ON DELETE CASCADE,
-	PRIMARY KEY("crawl_id")
-))
+	PRIMARY KEY("channel_id")
+)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from ungi_utils.Config import UngiConfig
-from ungi_utils.Sqlite3_Utils import list_telegram_bots, list_discord_bots
+from ungi_utils.Sqlite3_Utils import list_telegram_bots, list_discord_bots, list_twitch_bots
 import argparse
 import subprocess as sub
 import concurrent.futures
@@ -36,6 +36,9 @@ def run_discord(db_path):
     bot_list = list_discord_bots(db_path)
     discord_bots = [sub.Popen(f"python3 discord_logger.py -t {bot[0]} -m 2000 --connection {CONFIG.es_host}", shell=True) for bot in bot_list]
 
+def run_twitch(db_path):
+    bots = list_twitch_bots(db_path)
+    twitch_bots = [sub.Popen(f"python3 twitch.py -t {bot[0]} -c {bot[1]}, -n {bot[2]} --config {args.config} --verbose", shell=True) for bot in bots]
 
 def main():
     global args
@@ -57,6 +60,7 @@ def main():
     if CONFIG.use_discord:
         print("Starting Discord bots")
         run_discord(CONFIG.db_path)
-
-
+    if CONFIG.use_twitch:
+        print("Starting Twitch Bots")
+        run_twitch(CONFIG.db_path)
 main()
