@@ -48,3 +48,4 @@ urllib3==1.26.4
 wasabi==0.8.2
 ungi_utils
 discord.py-self
+twitchio
