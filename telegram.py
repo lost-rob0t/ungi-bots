@@ -12,7 +12,7 @@ from telethon import TelegramClient, events, utils
 from telethon.errors.rpcerrorlist import ChannelPrivateError
 from ungi_utils.Config import UngiConfig, auto_load
 from ungi_utils.Elastic_Wrapper import insert_doc
-from ungi_utils.entity_utils import get_hashtags, send_alert
+from ungi_utils.utils import get_hashtags, send_alert
 from ungi_utils.Sqlite3_Utils import (get_alert_level, get_words, hash_,
                                       list_targets, list_telegram)
 
@@ -21,12 +21,14 @@ from ungi_utils.Sqlite3_Utils import (get_alert_level, get_words, hash_,
 
 
 def utc_to_local(utc_dt):
+    """Convert a utc string to local time."""
     local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(local_tz)
     return local_tz.normalize(local_dt)  # .normalize might be unnecessary
 
 
 # We return date as iso format
 def aslocaltimestr(utc_dt):
+    """Convert a local time str to ISO 8601 format."""
     return utc_to_local(utc_dt).isoformat()
 
 # we log message using this
@@ -34,6 +36,8 @@ def aslocaltimestr(utc_dt):
 
 
 async def log_message(es_host, index, input_dict):
+    """Log a message. builds a dict then uploads it to the elasticsearch server.
+    """
     try:
         hash_id = hash_(str(
             str(input_dict["m"]) +
@@ -192,15 +196,13 @@ async def main():
             chat_watch = {}
             real_id = utils.resolve_id(abs(chat[0]))[0]
             chat_watch["rid"] = real_id
-            
-            #Note: this is checking for a prefix of 100.
+            # Note: this is checking for a prefix of 100.
             if int(str(abs(real_id))[:3]) == 100:
                 real_id = int(str(abs(real_id))[3:])
             chat_watch["chan-id"] = real_id
             chat_watch["operation-id"] = int(chat[2])
             chat_watch["alert-level"] = get_alert_level(CONFIG.db_path, chat[2])[0]
             watch_list.append(chat_watch)
-
 
         for word in get_words(CONFIG.db_path):
             word_d = {}
@@ -226,7 +228,6 @@ async def main():
                     chan.id = int(str(abs(chan.id))[3:])
                 if chan.id == chat["chan-id"]:
                     chat_id_list.append(abs(chan.id))
-                    
                     # this is kind of retarded
                     d["operation-id"] = chat["operation-id"]
                     d["chan-id"] = abs(chat['chan-id'])
@@ -238,15 +239,14 @@ async def main():
                 for line in file_output:
                     file_out.write(line + "\n")
 
-
         @client.on(events.NewMessage(chats=chat_id_list))
         async def newMessage(event):
             d = await doc_builder(event.message, client, watch_list)
             await log_message(CONFIG.es_host, CONFIG.telegram, d)
             min_level = 0
             print(d)
-            
-            # We loop over hte list of operations. if the doc has the operation id and the watch list has one
+            # We loop over hte list of operations.
+            # if the doc has the operation id and the watch list has one
             # we then set the corsponding alert level
             for chat in watch_list:
                 if d["operation-id"] == chat["operation-id"]:
@@ -254,9 +254,13 @@ async def main():
             try:
                 if 20 >= min_level and event.message.media is None:
                     if d["ut"]:
-                        send_alert(d["m"], d["ut"], d["group"], "new_message", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
+                        send_alert(d["m"], d["ut"], d["group"],
+                                   "new_message",
+                                   str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
                     else:
-                        send_alert(d["m"], d["group"], d["group"], "new_message", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
+                        send_alert(d["m"], d["group"],
+                                   d["group"], "new_message",
+                                   str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
             except KeyError:
                     pass
             except AttributeError:
@@ -265,7 +269,8 @@ async def main():
                 for target in target_list:
                     if target["target"] == d["ut"]:
                         if 75 >= min_level:
-                            send_alert("New image", d["ut"], d["group"].rstrip(), "target", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
+                            send_alert("New image", d["ut"], d["group"].rstrip(),
+                                       "target", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
             except KeyError:
                 pass
             for word in word_list:
@@ -273,8 +278,9 @@ async def main():
                     r = re.match(word, d["m"])
                     if r:
                         source = d["group"] + " | " + r
-                        if 85>= min_level:
-                            send_alert(d["m"], d["ut"], source, "watch_word", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
+                        if 85 >= min_level:
+                            send_alert(d["m"], d["ut"], source,
+                                       "watch_word", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
                 except KeyError:
                     pass
 
@@ -283,7 +289,8 @@ async def main():
                     if store_media:
                         try:
                             path = media_path + str(aslocaltimestr(event.message.date)) + f"_{d['group']}.jpg"
-                            send_alert(d["m"], d["ut"], d["group"], "image", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"), path)
+                            send_alert(d["m"], d["ut"], d["group"],
+                                       "image", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"), path)
                             if os.path.exists(path):
                                 if q == False:
                                     print("Duplicate file: " + path)
@@ -291,9 +298,11 @@ async def main():
                                 await client.download_media(event.message.media, path)
                                 if 20 >= min_level:
                                     if d["ut"]:
-                                        send_alert(d["m"], d["ut"], d["group"], "image", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"), path)
+                                        send_alert(d["m"], d["ut"], d["group"],
+                                                   "image", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"), path)
                                     else:
-                                        send_alert(d["m"], d["group"], d["group"], "image", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"), path)
+                                        send_alert(d["m"], d["group"], d["group"],
+                                                   "image", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"), path)
                         except KeyError:
                             pass
             except AttributeError:
@@ -333,5 +342,4 @@ async def main():
                 print("done, waiting to avoid timeouts")
         await client.run_until_disconnected()
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
+asyncio.get_event_loop().run_until_complete(main())

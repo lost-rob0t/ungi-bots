@@ -12,6 +12,8 @@ from ungi_utils.Config import auto_load, UngiConfig
 from ungi_utils.Sqlite3_Utils import list_servers, hash_, get_alert_level, list_targets, get_words
 from os import environ
 from operator import itemgetter
+from ungi_utils.logging_utils import UngiLogger
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--token", help="Logs in with this token")
 parser.add_argument("-d", "--db", help="database path")
@@ -29,6 +31,7 @@ args = parser.parse_args()
 
 UngiBot = discord.Client()
 
+
 # config stuff
 config_file = auto_load(args.config)
 conf_file = environ['UNGI_CONFIG']  # pulling config from environment
@@ -36,6 +39,7 @@ CONFIG = UngiConfig(conf_file)
 database = CONFIG.db_path  # database path
 # index setting where messages are stored
 index = CONFIG.discord
+Log = UngiLogger()
 print(conf_file)
 
 # We are retreiving the list of servers in the watch list
