@@ -15,9 +15,12 @@ from ungi_utils.Elastic_Wrapper import insert_doc
 from ungi_utils.utils import get_hashtags, send_alert
 from ungi_utils.Sqlite3_Utils import (get_alert_level, get_words, hash_,
                                       list_targets, list_telegram)
-
+from ungi_utils.logging_utils import UngiLogger
+import logging
 # i got this from here
 # https://stackoverflow.com/questions/4563272/convert-a-python-utc-datetime-to-a-local-datetime-using-only-python-standard-lib
+logger = logging.getLogger(__name__)
+logger = UngiLogger(CONFIG).get_logger(logger, __name__)
 
 
 def utc_to_local(utc_dt):
@@ -36,8 +39,7 @@ def aslocaltimestr(utc_dt):
 
 
 async def log_message(es_host, index, input_dict):
-    """Log a message. builds a dict then uploads it to the elasticsearch server.
-    """
+    """Log a message. builds a dict then uploads it to the elasticsearch server."""
     try:
         hash_id = hash_(str(
             str(input_dict["m"]) +
@@ -47,12 +49,13 @@ async def log_message(es_host, index, input_dict):
 
         await insert_doc(es_host, index, input_dict, hash_id)
     except KeyError as bad_doc:
-        print(bad_doc)
+        logger.warning(bad_doc)
 
 # used to build the docs from message objects
 
 
 async def doc_builder(message, client, chat_list):
+
     doc = {}
     if message:
         try:
@@ -114,7 +117,7 @@ async def get_messages(client, es_host, index, watch_list):
                                     str(aslocaltimestr(message.date)) + ".jpg"
                             if os.path.exists(path):
                                 if q == False:
-                                    print("Duplicate file: " + path)
+                                    logger.info("Duplicate file: " + path)
                             else:
                                 await client.download_media(message.media, path)
                 except AttributeError:
@@ -146,9 +149,9 @@ async def get_messages(client, es_host, index, watch_list):
                 except AttributeError:
                     pass
         except ChannelPrivateError:
-            print(f"{chat} is private")
+            logger.warning(f"{chat} is private")
 
-        print("done, waiting to avoid timeouts")
+        logger.warning("done, waiting to avoid timeouts")
         sleep(1)
 
 async def main():
@@ -176,10 +179,10 @@ async def main():
     # config setup
 
     CONFIG = UngiConfig(auto_load(args.config))
-    print("Ungi Config: ", CONFIG.config_path)
-    print("Telegram app id: ", args.appid)
-    print("Telegram app hash: ", args.apphash)
-    print("telegram Phone number: ", args.phone)
+    logger.info("Ungi Config: ", CONFIG.config_path)
+    logger.info("Telegram app id: ", args.appid)
+    logger.info("Telegram app hash: ", args.apphash)
+    logger.info("telegram Phone number: ", args.phone)
     loot_index = CONFIG.loot
     store_media = bool(CONFIG.telegram_store_media)
     media_path = CONFIG.telegram_media
@@ -244,7 +247,7 @@ async def main():
             d = await doc_builder(event.message, client, watch_list)
             await log_message(CONFIG.es_host, CONFIG.telegram, d)
             min_level = 0
-            print(d)
+            logger.info(d)
             # We loop over hte list of operations.
             # if the doc has the operation id and the watch list has one
             # we then set the corsponding alert level
@@ -339,7 +342,7 @@ async def main():
             if args.full:
                 shuffle(channel_list)  # randomized
                 await get_messages(client, CONFIG.es_host, CONFIG.telegram, channel_list)
-                print("done, waiting to avoid timeouts")
+                logger.info("done, waiting to avoid timeouts")
         await client.run_until_disconnected()
 
 asyncio.get_event_loop().run_until_complete(main())
