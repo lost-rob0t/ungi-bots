@@ -13,7 +13,7 @@ from ungi_utils.Sqlite3_Utils import list_servers, hash_, get_alert_level, list_
 from os import environ
 from operator import itemgetter
 from ungi_utils.logging_utils import UngiLogger
-
+import logging
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--token", help="Logs in with this token")
 parser.add_argument("-d", "--db", help="database path")
@@ -39,8 +39,10 @@ CONFIG = UngiConfig(conf_file)
 database = CONFIG.db_path  # database path
 # index setting where messages are stored
 index = CONFIG.discord
-Log = UngiLogger()
-print(conf_file)
+logger = logging.getLogger(__name__)
+Log = UngiLogger(CONFIG).get_logger(logger)
+
+logger.info(f"Using config: {args.CONFIG}")
 
 # We are retreiving the list of servers in the watch list
 watch_list = []
@@ -54,14 +56,14 @@ for server in list_servers(database):
         server_watch["id"] = server[1]
         server_watch["operation-id"] = server[2]
         server_watch["alert-level"] = get_alert_level(CONFIG.db_path, server[2])[0]
-        print(server_watch)
+        logger.info(f"Watching: {server_watch}")
         watch_list.append(server_watch)
 
 for word in get_words(CONFIG.db_path):
     word_d = {}
     word_d["word"] = word[0]
     word_d["operation-id"] = word[1]
-
+    logger.info(f"adding {word[0]} to watch words.")
 for target in list_targets(CONFIG.db_path):
     target_d = {}
     target_d["target"] = target[0]
@@ -98,8 +100,8 @@ def doc_build(message):
         for id in watch_list:
             if abs(id.get("id")) == abs(message.guild.id):
                 md["operation-id"] = id["operation-id"]
-    except KeyError as invalide_item:
-        print(invalide_item)
+    except KeyError as invalid_item:
+        logger.warning(invalid_item)
 
     return md
 
@@ -113,7 +115,7 @@ async def on_ready():
             print(f"{guild.id}|{guild}")
         servers += 1
 
-    print(f'Watching: {servers} servers')
+    logger.info(f'Watching: {servers} servers')
     for guild in UngiBot.guilds:
         for channel in guild.channels:
             try:
@@ -121,9 +123,9 @@ async def on_ready():
                     md = doc_build(message)
                     await log_message(args.connection, md)
             except discord.errors.Forbidden:
-                pass
+                pass # is not a text channel
             except AttributeError:
-                pass
+                pass # is not a text channel
             
 # Ran When a new message is sent to the ungi bot
 
@@ -135,7 +137,7 @@ async def on_message(message):
         for watch in watch_list:
             if watch["operation-id"] == md["operation-id"]:
                 min_level = int(watch["alert-level"])
-                print(md)
+                logger.info(md)
                 break
     except KeyError as e:
         print(e)
@@ -143,18 +145,18 @@ async def on_message(message):
     
     try:
         if 20 >= min_level:
-            if md["oepration-id"]:
+            if md["operation-id"]:
                     send_alert(str(md["m"]), md["nick"], md["sn"], "new_message", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
     except KeyError as e:
-        print(e)
+        logger.warning(f"Message object missing field\n{e}")
     try:
         for target in target_list:
             if target["target"] == md["ut"]:
                 if 75 >= min_level:
-                        if md["oepration-id"]:
+                        if md["operation-id"]:
                                 send_alert(str(md["m"]), md["nick"], md["sn"], "target", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
-    except KeyError:
-        pass
+    except KeyError as e:
+        logger.warning(f"Message object missing field\n{e}")
     for word in word_list:
         try:
             r = re.match(word, md["m"])
@@ -163,8 +165,7 @@ async def on_message(message):
                 if 85>= min_level:
                     send_alert(md["m"], md["nick"], source, "watch_word", str(f"{CONFIG.server_host}:{CONFIG.server_port}/alert"))
         except KeyError:
-            pass
-
+                logger.warning(f"Message object missing field\n{e}")
 
 
     await log_message(args.connection, md)
@@ -188,3 +189,4 @@ async def on_guild_join(guild):
 # Note: This only works in discord.py-self pkg becuase discord removed self bots
 
 UngiBot.run(args.token)
+logger.debug(f"Bot: {args.token} has disconnected")
